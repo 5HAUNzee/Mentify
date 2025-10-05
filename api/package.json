@@ -1,0 +1,8 @@
+{
+  "name": "mentify-api",
+  "version": "1.0.0",
+  "main": "sendEmail.js",
+  "dependencies": {
+    "emailjs-com": "^3.2.0"
+  }
+}
