@@ -15,7 +15,8 @@ export default function SuperDashboard({ navigation }) {
   const { signOut } = useAuth();
   const [pendingUsers, setPendingUsers] = useState([]);
   
-  const VEREL_API = "https://yourproject.vercel.app/api/sendEmail"; // <- Replace with your deployed URL
+  const VEREL_API = "https://mentify-swzq.vercel.app/api/sendEmail1";
+ // <- Replace with your deployed URL
 
   useEffect(() => {
     const fetchPendingUsers = async () => {
