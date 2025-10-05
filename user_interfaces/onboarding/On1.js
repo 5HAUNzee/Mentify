@@ -23,10 +23,13 @@ const onboardingSlides = [
   }
 ];
 
-export default function On1({ onGetStarted, onLogin }) {
+export default function On1({ navigation }) {
   const [currentSlide, setCurrentSlide] = useState(0);
-
   const slide = onboardingSlides[currentSlide];
+
+  const handleNavigateToAuth = () => {
+    navigation.navigate("Auth"); // Navigate to Clerk Auth screen
+  };
 
   return (
     <View className="flex-1 bg-white">
@@ -41,7 +44,6 @@ export default function On1({ onGetStarted, onLogin }) {
 
       {/* Main Content */}
       <View className="flex-1 px-6 justify-center">
-        {/* Icon Circle */}
         <View 
           className="w-24 h-24 rounded-full items-center justify-center self-center mb-8"
           style={{ backgroundColor: `${slide.color}15` }}
@@ -52,24 +54,18 @@ export default function On1({ onGetStarted, onLogin }) {
             color={slide.color} 
           />
         </View>
-
-        {/* Title & Description */}
         <Text className="text-3xl font-bold text-slate-900 text-center mb-4">
           {slide.title}
         </Text>
         <Text className="text-lg text-slate-600 text-center leading-7 px-4">
           {slide.description}
         </Text>
-
-        {/* Slide Indicators */}
         <View className="flex-row justify-center gap-3 mt-12">
           {onboardingSlides.map((_, index) => (
             <TouchableOpacity
               key={index}
               onPress={() => setCurrentSlide(index)}
-              className={`w-3 h-3 rounded-full ${
-                index === currentSlide ? 'bg-blue-600' : 'bg-slate-300'
-              }`}
+              className={`w-3 h-3 rounded-full ${index === currentSlide ? 'bg-blue-600' : 'bg-slate-300'}`}
             />
           ))}
         </View>
@@ -82,9 +78,7 @@ export default function On1({ onGetStarted, onLogin }) {
           <TouchableOpacity
             onPress={() => setCurrentSlide(prev => Math.max(0, prev - 1))}
             disabled={currentSlide === 0}
-            className={`p-4 rounded-full ${
-              currentSlide === 0 ? 'opacity-30' : 'bg-slate-100'
-            }`}
+            className={`p-4 rounded-full ${currentSlide === 0 ? 'opacity-30' : 'bg-slate-100'}`}
           >
             <MaterialCommunityIcons 
               name="chevron-left" 
@@ -94,9 +88,7 @@ export default function On1({ onGetStarted, onLogin }) {
           </TouchableOpacity>
 
           <TouchableOpacity
-            onPress={() => setCurrentSlide(prev => 
-              prev === onboardingSlides.length - 1 ? onGetStarted() : prev + 1
-            )}
+            onPress={() => setCurrentSlide(prev => prev === onboardingSlides.length - 1 ? handleNavigateToAuth() : prev + 1)}
             className="p-4 bg-slate-100 rounded-full"
           >
             <MaterialCommunityIcons 
@@ -110,7 +102,7 @@ export default function On1({ onGetStarted, onLogin }) {
         {/* Action Buttons */}
         <View className="space-y-4">
           <TouchableOpacity
-            onPress={onGetStarted}
+            onPress={handleNavigateToAuth} // Navigate to Auth on Get Started
             className="bg-blue-600 py-5 rounded-2xl items-center shadow-lg shadow-blue-600/25"
           >
             <Text className="text-white text-lg font-semibold">
@@ -119,7 +111,7 @@ export default function On1({ onGetStarted, onLogin }) {
           </TouchableOpacity>
 
           <TouchableOpacity
-            onPress={onLogin}
+            onPress={handleNavigateToAuth} // Navigate to Auth on Log In
             className="py-5 rounded-2xl items-center border border-slate-300"
           >
             <Text className="text-slate-700 text-lg font-semibold">
@@ -130,7 +122,7 @@ export default function On1({ onGetStarted, onLogin }) {
 
         {/* Skip for now */}
         <TouchableOpacity
-          onPress={onGetStarted}
+          onPress={handleNavigateToAuth} // Optional: navigate to Auth
           className="py-4 items-center"
         >
           <Text className="text-slate-500">
