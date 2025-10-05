@@ -14,9 +14,6 @@ import { useAuth } from "@clerk/clerk-expo";
 export default function SuperDashboard({ navigation }) {
   const { signOut } = useAuth();
   const [pendingUsers, setPendingUsers] = useState([]);
-  
-  const VEREL_API = "https://mentify-swzq.vercel.app/api/sendEmail1";
- // <- Replace with your deployed URL
 
   useEffect(() => {
     const fetchPendingUsers = async () => {
@@ -42,28 +39,9 @@ export default function SuperDashboard({ navigation }) {
     }
   };
 
-  const sendEmail = async (user, status) => {
-    try {
-      const res = await fetch(VEREL_API, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          name: `${user.firstName} ${user.lastName}`,
-          email: user.email,
-          status,
-        }),
-      });
-      if (!res.ok) throw new Error("Failed to send email");
-      console.log(`${status} email sent to ${user.email}`);
-    } catch (err) {
-      console.error("Email error:", err);
-    }
-  };
-
   const approveUser = async (user) => {
     try {
       await updateDoc(doc(db, "users", user.id), { status: "approved" });
-      await sendEmail(user, "approved");
       Alert.alert("Success", `${user.firstName} approved`);
       setPendingUsers((prev) => prev.filter((u) => u.id !== user.id));
     } catch (err) {
@@ -75,7 +53,6 @@ export default function SuperDashboard({ navigation }) {
   const rejectUser = async (user) => {
     try {
       await updateDoc(doc(db, "users", user.id), { status: "rejected" });
-      await sendEmail(user, "rejected");
       Alert.alert("Success", `${user.firstName} rejected`);
       setPendingUsers((prev) => prev.filter((u) => u.id !== user.id));
     } catch (err) {
@@ -111,7 +88,9 @@ export default function SuperDashboard({ navigation }) {
             flex: 0.48,
           }}
         >
-          <Text style={{ color: "white", textAlign: "center", fontWeight: "bold" }}>
+          <Text
+            style={{ color: "white", textAlign: "center", fontWeight: "bold" }}
+          >
             Approve
           </Text>
         </TouchableOpacity>
@@ -125,7 +104,9 @@ export default function SuperDashboard({ navigation }) {
             flex: 0.48,
           }}
         >
-          <Text style={{ color: "white", textAlign: "center", fontWeight: "bold" }}>
+          <Text
+            style={{ color: "white", textAlign: "center", fontWeight: "bold" }}
+          >
             Reject
           </Text>
         </TouchableOpacity>

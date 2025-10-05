@@ -28,22 +28,35 @@ export default function On1({ navigation }) {
   const slide = onboardingSlides[currentSlide];
 
   const handleNavigateToAuth = () => {
-    navigation.navigate("Auth"); // Navigate to Clerk Auth screen
+    navigation.navigate("Auth");
+  };
+
+  const nextSlide = () => {
+    if (currentSlide === onboardingSlides.length - 1) {
+      handleNavigateToAuth();
+    } else {
+      setCurrentSlide(prev => prev + 1);
+    }
+  };
+
+  const prevSlide = () => {
+    setCurrentSlide(prev => Math.max(0, prev - 1));
   };
 
   return (
-    <View className="flex-1 bg-white">
+    <View className="flex-1 bg-blue-900">
       {/* Header */}
       <View className="pt-16 pb-8 items-center">
         <View className="flex-row items-center">
-          <MaterialCommunityIcons name="school" size={32} color="#3B82F6" />
-          <Text className="text-3xl font-bold text-slate-900 ml-2">Mentify</Text>
+          <MaterialCommunityIcons name="school" size={32} color="white" />
+          <Text className="text-3xl font-bold text-white ml-2">Mentify</Text>
         </View>
-        <Text className="text-slate-500 mt-2">Educational Management Platform</Text>
+        <Text className="text-gray-200 mt-2 text-base">Educational Management Platform</Text>
       </View>
 
       {/* Main Content */}
       <View className="flex-1 px-6 justify-center">
+        {/* Icon Container */}
         <View 
           className="w-24 h-24 rounded-full items-center justify-center self-center mb-8"
           style={{ backgroundColor: `${slide.color}15` }}
@@ -51,21 +64,29 @@ export default function On1({ navigation }) {
           <MaterialCommunityIcons 
             name={slide.icon} 
             size={40} 
-            color={slide.color} 
+            color={"white"}
           />
         </View>
-        <Text className="text-3xl font-bold text-slate-900 text-center mb-4">
+        
+        {/* Title */}
+        <Text className="text-3xl font-bold text-white text-center mb-4">
           {slide.title}
         </Text>
-        <Text className="text-lg text-slate-600 text-center leading-7 px-4">
+        
+        {/* Description */}
+        <Text className="text-lg text-gray-200 text-center leading-7 px-4">
           {slide.description}
         </Text>
+        
+        {/* Dots Indicator */}
         <View className="flex-row justify-center gap-3 mt-12">
           {onboardingSlides.map((_, index) => (
             <TouchableOpacity
               key={index}
               onPress={() => setCurrentSlide(index)}
-              className={`w-3 h-3 rounded-full ${index === currentSlide ? 'bg-blue-600' : 'bg-slate-300'}`}
+              className={`w-3 h-3 rounded-full ${
+                index === currentSlide ? 'bg-white' : 'bg-gray-400'
+              }`}
             />
           ))}
         </View>
@@ -75,57 +96,63 @@ export default function On1({ navigation }) {
       <View className="px-6 pb-8">
         {/* Navigation Buttons */}
         <View className="flex-row justify-between mb-8">
+          {/* Back Button */}
           <TouchableOpacity
-            onPress={() => setCurrentSlide(prev => Math.max(0, prev - 1))}
+            onPress={prevSlide}
             disabled={currentSlide === 0}
-            className={`p-4 rounded-full ${currentSlide === 0 ? 'opacity-30' : 'bg-slate-100'}`}
+            className={`p-4 rounded-full ${
+              currentSlide === 0 ? 'opacity-30' : 'bg-white/20'
+            }`}
           >
             <MaterialCommunityIcons 
               name="chevron-left" 
               size={24} 
-              color={currentSlide === 0 ? '#9CA3AF' : '#4B5563'} 
+              color="white" 
             />
           </TouchableOpacity>
 
+          {/* Next Button */}
           <TouchableOpacity
-            onPress={() => setCurrentSlide(prev => prev === onboardingSlides.length - 1 ? handleNavigateToAuth() : prev + 1)}
-            className="p-4 bg-slate-100 rounded-full"
+            onPress={nextSlide}
+            className="p-4 bg-white/20 rounded-full"
           >
             <MaterialCommunityIcons 
               name={currentSlide === onboardingSlides.length - 1 ? "check" : "chevron-right"} 
               size={24} 
-              color="#4B5563" 
+              color="white" 
             />
           </TouchableOpacity>
         </View>
 
         {/* Action Buttons */}
         <View className="space-y-4">
+          {/* Get Started Button */}
           <TouchableOpacity
-            onPress={handleNavigateToAuth} // Navigate to Auth on Get Started
-            className="bg-blue-600 py-5 rounded-2xl items-center shadow-lg shadow-blue-600/25"
+            onPress={handleNavigateToAuth}
+            className="bg-white py-5 rounded-2xl items-center shadow-lg shadow-black/25"
           >
-            <Text className="text-white text-lg font-semibold">
+            <Text className="text-blue-900 text-lg font-semibold">
               Get Started
             </Text>
           </TouchableOpacity>
 
+          {/* Login Button */}
           <TouchableOpacity
-            onPress={handleNavigateToAuth} // Navigate to Auth on Log In
-            className="py-5 rounded-2xl items-center border border-slate-300"
+            onPress={handleNavigateToAuth}
+            className="py-5 rounded-2xl items-center border border-white/30"
           >
-            <Text className="text-slate-700 text-lg font-semibold">
+            <Text className="text-white text-lg font-semibold">
               Already have an account? Log In
             </Text>
           </TouchableOpacity>
         </View>
 
-        {/* Skip for now */}
+        {/* Skip Button */}
         <TouchableOpacity
-          onPress={handleNavigateToAuth} // Optional: navigate to Auth
+          onPress={handleNavigateToAuth}
           className="py-4 items-center"
         >
-          <Text className="text-slate-500">
+          <Text className="text-gray-300">
             Skip for now
           </Text>
         </TouchableOpacity>

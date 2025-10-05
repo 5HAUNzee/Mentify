@@ -14,12 +14,15 @@ import On1 from "./user_interfaces/onboarding/On1";
 import Auth from "./user_interfaces/Auth/Auth"; // Clerk login screen
 import ApprovalPendingScreen from "./user_interfaces/Auth/ApprovalPendingScreen";
 import Registration from "./user_interfaces/Auth/Registration";
-import MenteeDashboard from "./user_interfaces/mentee/MenteeDashboard";
+;
 import SuperDashboard from "./user_interfaces/super_admin/SuperDashboard";
 import CollegeDashboard from "./user_interfaces/college_admin/CollegeDashboard";
 import DeptDashboard from "./user_interfaces/dept_admin/DeptDashboard";
 import MentorDashboard from "./user_interfaces/mentor/MentorDashboard";
 import Rejected from "./user_interfaces/Auth/Rejected";
+
+import MenteeTabs from "./user_interfaces/mentee/MenteeTabs";
+
 
 
 const Stack = createNativeStackNavigator();
@@ -46,11 +49,17 @@ export default function App() {
               <Stack.Screen name="Rejected" component={Rejected} />
 
               {/* Dashboards */}
-              <Stack.Screen name="MenteeDashboard" component={MenteeDashboard} />
+              
               <Stack.Screen name="SuperDashboard" component={SuperDashboard} />
               <Stack.Screen name="CollegeDashboard" component={CollegeDashboard} />
               <Stack.Screen name="DeptDashboard" component={DeptDashboard} />
               <Stack.Screen name="MentorDashboard" component={MentorDashboard} />
+
+              {/* Mentee screens as needed */}
+            <Stack.Screen name="MenteeDashboard" component={MenteeTabs} />
+
+
+
               
             </Stack.Navigator>
           </NavigationContainer>
