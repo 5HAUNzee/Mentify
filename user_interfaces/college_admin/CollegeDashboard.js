@@ -117,7 +117,7 @@ export default function CollegeDashboard({ navigation }) {
   return (
     <View style={{ flex: 1, padding: 20, backgroundColor: "#f2f4f7" }}>
       <Text style={{ fontSize: 26, fontWeight: "bold", marginBottom: 20 }}>
-        SuperAdmin Dashboard
+        Collegeadmin Dashboard
       </Text>
 
       {pendingUsers.length === 0 ? (
