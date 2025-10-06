@@ -20,7 +20,9 @@ export default function SuperDashboard({ navigation }) {
       const q = query(
         collection(db, "users"),
         where("status", "==", "pending"),
-        where("role", "==", "collegeadmin"),
+
+        where("role", "==", "deptadmin"),
+
         where("college", "==", "Goa College of Engineering")
       );
       const snapshot = await getDocs(q);
