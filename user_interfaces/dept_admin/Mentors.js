@@ -22,6 +22,8 @@ import {
   where,
   orderBy,
   Timestamp,
+  deleteDoc,
+  doc,
 } from "firebase/firestore";
 import { db } from "../../firebase.config";
 import { useAuth } from "@clerk/clerk-expo";
@@ -43,6 +45,13 @@ export default function Mentors({ navigation }) {
   const [selectedMentor, setSelectedMentor] = useState(null);
   const [selectedMentees, setSelectedMentees] = useState([]);
   const [showMentorDropdown, setShowMentorDropdown] = useState(false);
+
+  // Delete modal states
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [deleteUserType, setDeleteUserType] = useState("mentor"); // 'mentor' or 'mentee'
+  const [usersToDelete, setUsersToDelete] = useState([]);
+  const [selectedUsersForDeletion, setSelectedUsersForDeletion] = useState([]);
+  const [deleteSearchQuery, setDeleteSearchQuery] = useState("");
 
   useEffect(() => {
     fetchData();
@@ -212,6 +221,102 @@ export default function Mentors({ navigation }) {
 
   const filteredMentees = getFilteredMentees();
 
+  const openDeleteModal = (userType) => {
+    setDeleteUserType(userType);
+    setUsersToDelete(userType === "mentor" ? mentors : mentees);
+    setSelectedUsersForDeletion([]);
+    setDeleteSearchQuery("");
+    setShowDeleteModal(true);
+  };
+
+  const toggleUserSelection = (userId) => {
+    setSelectedUsersForDeletion((prev) =>
+      prev.includes(userId)
+        ? prev.filter((id) => id !== userId)
+        : [...prev, userId]
+    );
+  };
+
+  const handleDeleteUsers = async () => {
+    if (selectedUsersForDeletion.length === 0) {
+      Alert.alert("Error", "Please select at least one user to delete");
+      return;
+    }
+
+    Alert.alert(
+      "Confirm Delete",
+      `Are you sure you want to delete ${selectedUsersForDeletion.length} ${deleteUserType}(s)? This action cannot be undone.`,
+      [
+        { text: "Cancel", style: "cancel" },
+        {
+          text: "Delete",
+          style: "destructive",
+          onPress: async () => {
+            try {
+              setLoading(true);
+
+              // Delete from Firestore
+              const deletePromises = selectedUsersForDeletion.map((userId) =>
+                deleteDoc(doc(db, "users", userId))
+              );
+              await Promise.all(deletePromises);
+
+              // Delete related assignments if mentors are deleted
+              if (deleteUserType === "mentor") {
+                const assignmentsToDelete = assignments.filter((assignment) =>
+                  selectedUsersForDeletion.includes(assignment.mentorId)
+                );
+                const deleteAssignmentPromises = assignmentsToDelete.map(
+                  (assignment) =>
+                    deleteDoc(doc(db, "assignments", assignment.id))
+                );
+                await Promise.all(deleteAssignmentPromises);
+              }
+
+              // Delete related assignments if mentees are deleted
+              if (deleteUserType === "mentee") {
+                const assignmentsToDelete = assignments.filter((assignment) =>
+                  selectedUsersForDeletion.includes(assignment.menteeId)
+                );
+                const deleteAssignmentPromises = assignmentsToDelete.map(
+                  (assignment) =>
+                    deleteDoc(doc(db, "assignments", assignment.id))
+                );
+                await Promise.all(deleteAssignmentPromises);
+              }
+
+              Alert.alert(
+                "Success",
+                `Successfully deleted ${selectedUsersForDeletion.length} ${deleteUserType}(s)`
+              );
+
+              // Refresh data
+              await fetchData();
+              setShowDeleteModal(false);
+              setSelectedUsersForDeletion([]);
+            } catch (err) {
+              console.error("Error deleting users:", err);
+              Alert.alert("Error", "Failed to delete users");
+            } finally {
+              setLoading(false);
+            }
+          },
+        },
+      ]
+    );
+  };
+
+  const getFilteredDeleteUsers = () => {
+    if (!deleteSearchQuery) return usersToDelete;
+
+    return usersToDelete.filter((user) => {
+      const fullName = `${user.firstName} ${user.lastName}`.toLowerCase();
+      return fullName.includes(deleteSearchQuery.toLowerCase());
+    });
+  };
+
+  const filteredDeleteUsers = getFilteredDeleteUsers();
+
   return (
     <SafeAreaView style={styles.container}>
       {/* Header */}
@@ -222,7 +327,7 @@ export default function Mentors({ navigation }) {
         </TouchableOpacity>
       </View>
 
-      <ScrollView 
+      <ScrollView
         style={styles.content}
         showsVerticalScrollIndicator={false}
         contentContainerStyle={styles.contentContainer}
@@ -237,6 +342,27 @@ export default function Mentors({ navigation }) {
             >
               <Feather name="plus" size={16} color="#fff" />
               <Text style={styles.newAssignBtnText}>New Assignment</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+
+        {/* Delete Users Section */}
+        <View style={styles.deleteSection}>
+          <Text style={styles.sectionTitle}>Manage Users</Text>
+          <View style={styles.deleteButtonsRow}>
+            <TouchableOpacity
+              style={styles.deleteMentorsBtn}
+              onPress={() => openDeleteModal("mentor")}
+            >
+              <Feather name="user-x" size={16} color="#fff" />
+              <Text style={styles.deleteBtnText}>Delete Mentors</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={styles.deleteMenteesBtn}
+              onPress={() => openDeleteModal("mentee")}
+            >
+              <Feather name="user-minus" size={16} color="#fff" />
+              <Text style={styles.deleteBtnText}>Delete Mentees</Text>
             </TouchableOpacity>
           </View>
         </View>
@@ -301,7 +427,7 @@ export default function Mentors({ navigation }) {
             </View>
 
             {/* Modal Body */}
-            <ScrollView 
+            <ScrollView
               style={styles.modalBody}
               showsVerticalScrollIndicator={false}
               keyboardShouldPersistTaps="handled"
@@ -322,10 +448,10 @@ export default function Mentors({ navigation }) {
                     ? `${selectedMentor.firstName} ${selectedMentor.lastName}`
                     : "Choose a mentor"}
                 </Text>
-                <Feather 
-                  name={showMentorDropdown ? "chevron-up" : "chevron-down"} 
-                  size={20} 
-                  color="#6b7280" 
+                <Feather
+                  name={showMentorDropdown ? "chevron-up" : "chevron-down"}
+                  size={20}
+                  color="#6b7280"
                 />
               </TouchableOpacity>
 
@@ -383,7 +509,8 @@ export default function Mentors({ navigation }) {
               {selectedMentees.length > 0 && (
                 <View style={styles.selectedCountBadge}>
                   <Text style={styles.selectedCountText}>
-                    {selectedMentees.length} mentee{selectedMentees.length > 1 ? "s" : ""} selected
+                    {selectedMentees.length} mentee
+                    {selectedMentees.length > 1 ? "s" : ""} selected
                   </Text>
                 </View>
               )}
@@ -449,8 +576,147 @@ export default function Mentors({ navigation }) {
                   <ActivityIndicator size="small" color="#fff" />
                 ) : (
                   <Text style={styles.assignButtonText}>
-                    Assign {selectedMentees.length > 0 && `(${selectedMentees.length})`}
+                    Assign{" "}
+                    {selectedMentees.length > 0 &&
+                      `(${selectedMentees.length})`}
                   </Text>
+                )}
+              </TouchableOpacity>
+            </ScrollView>
+          </View>
+        </KeyboardAvoidingView>
+      </Modal>
+
+      {/* Delete Users Modal */}
+      <Modal
+        visible={showDeleteModal}
+        animationType="slide"
+        transparent={true}
+        onRequestClose={() => setShowDeleteModal(false)}
+      >
+        <KeyboardAvoidingView
+          behavior={Platform.OS === "ios" ? "padding" : "height"}
+          style={styles.modalOverlay}
+        >
+          <View style={styles.modalContent}>
+            {/* Modal Header */}
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>
+                Delete {deleteUserType === "mentor" ? "Mentors" : "Mentees"}
+              </Text>
+              <TouchableOpacity onPress={() => setShowDeleteModal(false)}>
+                <Feather name="x" size={24} color="#6b7280" />
+              </TouchableOpacity>
+            </View>
+
+            {/* Modal Body */}
+            <ScrollView
+              style={styles.modalBody}
+              showsVerticalScrollIndicator={false}
+              keyboardShouldPersistTaps="handled"
+            >
+              {/* Warning Message */}
+              <View style={styles.warningCard}>
+                <Feather name="alert-triangle" size={20} color="#f59e0b" />
+                <Text style={styles.warningText}>
+                  Deleting users will also remove their assignments. This action
+                  cannot be undone.
+                </Text>
+              </View>
+
+              {/* Search Bar */}
+              <View style={styles.searchContainer}>
+                <Feather name="search" size={20} color="#9ca3af" />
+                <TextInput
+                  style={styles.searchInput}
+                  placeholder={`Search ${deleteUserType}s by name...`}
+                  placeholderTextColor="#9ca3af"
+                  value={deleteSearchQuery}
+                  onChangeText={setDeleteSearchQuery}
+                />
+                {deleteSearchQuery.length > 0 && (
+                  <TouchableOpacity onPress={() => setDeleteSearchQuery("")}>
+                    <Feather name="x-circle" size={18} color="#9ca3af" />
+                  </TouchableOpacity>
+                )}
+              </View>
+
+              {/* Selected Count */}
+              {selectedUsersForDeletion.length > 0 && (
+                <View style={styles.selectedCountBadge}>
+                  <Text style={styles.selectedCountText}>
+                    {selectedUsersForDeletion.length} user
+                    {selectedUsersForDeletion.length > 1 ? "s" : ""} selected
+                  </Text>
+                </View>
+              )}
+
+              {/* Users List */}
+              <View style={styles.menteesList}>
+                {filteredDeleteUsers.length === 0 ? (
+                  <View style={styles.noMenteesContainer}>
+                    <Feather name="inbox" size={40} color="#d1d5db" />
+                    <Text style={styles.noMenteesText}>
+                      {deleteSearchQuery
+                        ? `No ${deleteUserType}s found matching your search`
+                        : `No ${deleteUserType}s available`}
+                    </Text>
+                  </View>
+                ) : (
+                  filteredDeleteUsers.map((user) => (
+                    <TouchableOpacity
+                      key={user.id}
+                      style={styles.menteeItem}
+                      onPress={() => toggleUserSelection(user.id)}
+                      activeOpacity={0.7}
+                    >
+                      <View
+                        style={[
+                          styles.checkbox,
+                          selectedUsersForDeletion.includes(user.id) &&
+                            styles.checkboxSelectedDelete,
+                        ]}
+                      >
+                        {selectedUsersForDeletion.includes(user.id) && (
+                          <Feather name="check" size={16} color="#fff" />
+                        )}
+                      </View>
+                      <View style={styles.menteeItemInfo}>
+                        <Text style={styles.menteeItemName}>
+                          {user.firstName} {user.lastName}
+                        </Text>
+                        {user.email && (
+                          <Text style={styles.menteeItemEmail}>
+                            {user.email}
+                          </Text>
+                        )}
+                      </View>
+                    </TouchableOpacity>
+                  ))
+                )}
+              </View>
+
+              {/* Delete Button */}
+              <TouchableOpacity
+                style={[
+                  styles.deleteButton,
+                  selectedUsersForDeletion.length === 0 &&
+                    styles.deleteButtonDisabled,
+                ]}
+                onPress={handleDeleteUsers}
+                disabled={selectedUsersForDeletion.length === 0 || loading}
+              >
+                {loading ? (
+                  <ActivityIndicator size="small" color="#fff" />
+                ) : (
+                  <>
+                    <Feather name="trash-2" size={18} color="#fff" />
+                    <Text style={styles.deleteButtonText}>
+                      Delete{" "}
+                      {selectedUsersForDeletion.length > 0 &&
+                        `(${selectedUsersForDeletion.length})`}
+                    </Text>
+                  </>
                 )}
               </TouchableOpacity>
             </ScrollView>
@@ -468,11 +734,17 @@ export default function Mentors({ navigation }) {
           <Text style={styles.navLabel}>Dashboard</Text>
         </TouchableOpacity>
 
-        <TouchableOpacity style={styles.navItem}>
-          <Feather name="users" size={24} color="#10b981" />
-          <Text style={[styles.navLabel, styles.navLabelActive]}>
-            Mentors
-          </Text>
+        <TouchableOpacity
+          style={styles.navItem}
+          onPress={() => navigation.navigate("Mentors")}
+        >
+          <Feather
+            name="users"
+            size={24}
+            color={activeTab === "Mentors" ? "#10b981" : "#9ca3af"}
+          />
+
+          <Text style={[styles.navLabel, styles.navLabelActive]}>Mentors</Text>
         </TouchableOpacity>
 
         <TouchableOpacity
@@ -837,6 +1109,85 @@ const styles = StyleSheet.create({
   },
   navLabelActive: {
     color: "#10b981",
+    fontWeight: "600",
+  },
+  deleteSection: {
+    backgroundColor: "#fff",
+    borderRadius: 12,
+    padding: 16,
+    marginBottom: 16,
+    borderWidth: 1,
+    borderColor: "#e5e7eb",
+  },
+  deleteButtonsRow: {
+    flexDirection: "row",
+    gap: 12,
+    marginTop: 12,
+  },
+  deleteMentorsBtn: {
+    flex: 1,
+    backgroundColor: "#ef4444",
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    paddingVertical: 10,
+    paddingHorizontal: 12,
+    borderRadius: 8,
+    gap: 6,
+  },
+  deleteMenteesBtn: {
+    flex: 1,
+    backgroundColor: "#f59e0b",
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    paddingVertical: 10,
+    paddingHorizontal: 12,
+    borderRadius: 8,
+    gap: 6,
+  },
+  deleteBtnText: {
+    color: "#fff",
+    fontSize: 13,
+    fontWeight: "600",
+  },
+  warningCard: {
+    flexDirection: "row",
+    backgroundColor: "#fef3c7",
+    padding: 12,
+    borderRadius: 8,
+    marginBottom: 16,
+    borderWidth: 1,
+    borderColor: "#f59e0b",
+    gap: 10,
+  },
+  warningText: {
+    flex: 1,
+    fontSize: 13,
+    color: "#92400e",
+    lineHeight: 18,
+  },
+  checkboxSelectedDelete: {
+    backgroundColor: "#ef4444",
+    borderColor: "#ef4444",
+  },
+  deleteButton: {
+    backgroundColor: "#ef4444",
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    padding: 14,
+    borderRadius: 8,
+    marginTop: 8,
+    marginBottom: 16,
+    gap: 8,
+  },
+  deleteButtonDisabled: {
+    backgroundColor: "#d1d5db",
+  },
+  deleteButtonText: {
+    color: "#fff",
+    fontSize: 15,
     fontWeight: "600",
   },
 });
