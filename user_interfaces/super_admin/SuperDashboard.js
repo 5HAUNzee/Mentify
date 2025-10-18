@@ -21,7 +21,7 @@ export default function SuperDashboard({ navigation }) {
         collection(db, "users"),
         where("status", "==", "pending"),
 
-        where("role", "==", "deptadmin"),
+        where("role", "==", "collegeadmin"),
 
         where("college", "==", "Goa College of Engineering")
       );

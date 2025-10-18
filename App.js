@@ -22,6 +22,11 @@ import Rejected from "./user_interfaces/Auth/Rejected";
 import Mentors from "./user_interfaces/dept_admin/Mentors";
 import Announcements from "./user_interfaces/dept_admin/Announcements";
 import Profile from "./user_interfaces/dept_admin/Profile";
+import Users from "./user_interfaces/college_admin/Users";
+import Forms from "./user_interfaces/college_admin/Forms";
+import CollegeProfile from "./user_interfaces/college_admin/CollegeProfile";
+import CreateForm from "./user_interfaces/college_admin/CreateForm";
+import ViewForm from "./user_interfaces/college_admin/ViewForm";
 
 import MenteeTabs from "./user_interfaces/mentee/MenteeTabs";
 
@@ -74,6 +79,12 @@ export default function App() {
               <Stack.Screen name="Mentors" component={Mentors} />
               <Stack.Screen name="Announcements" component={Announcements} />
               <Stack.Screen name="Profile" component={Profile} />
+              {/* Collegeadmin screens */}
+              <Stack.Screen name="Users" component={Users} />
+              <Stack.Screen name="Forms" component={Forms} />
+              <Stack.Screen name="CollegeProfile" component={CollegeProfile} />
+              <Stack.Screen name="CreateForm" component={CreateForm} />
+              <Stack.Screen name="ViewForm" component={ViewForm} />
 
 
             </Stack.Navigator>
