@@ -14,7 +14,16 @@ import {
 } from "react-native";
 import { Feather } from "@expo/vector-icons";
 import * as ImagePicker from "expo-image-picker";
-import { doc, getDoc, setDoc, updateDoc, collection, query, where, getDocs } from "firebase/firestore";
+import {
+  doc,
+  getDoc,
+  setDoc,
+  updateDoc,
+  collection,
+  query,
+  where,
+  getDocs,
+} from "firebase/firestore";
 
 import { db } from "../../firebase.config";
 import { useAuth } from "@clerk/clerk-expo";
@@ -63,22 +72,22 @@ export default function MenteeProfile({ navigation }) {
   const fetchUserProfile = async () => {
     try {
       setLoading(true);
-      
+
       // Fetch basic user info from users collection
       const userDocRef = doc(db, "users", userId);
       const userSnap = await getDoc(userDocRef);
-      
+
       if (!userSnap.exists()) {
         Alert.alert("Error", "User not found");
         return;
       }
-      
+
       const basicUserData = userSnap.data();
-      
+
       // Fetch mentee-specific data from mentees collection
       const menteeDocRef = doc(db, "mentees", userId);
       const menteeSnap = await getDoc(menteeDocRef);
-      
+
       // Fetch mentor assignment
       let mentorName = "";
       let mentorId = null;
@@ -86,18 +95,20 @@ export default function MenteeProfile({ navigation }) {
         const assignmentsRef = collection(db, "assignments");
         const q = query(assignmentsRef, where("menteeId", "==", userId));
         const assignmentSnap = await getDocs(q);
-        
+
         if (!assignmentSnap.empty) {
           const assignmentData = assignmentSnap.docs[0].data();
           mentorId = assignmentData.mentorId;
-          
+
           // Fetch mentor name from users collection
           if (mentorId) {
             const mentorDocRef = doc(db, "users", mentorId);
             const mentorSnap = await getDoc(mentorDocRef);
             if (mentorSnap.exists()) {
               const mentorData = mentorSnap.data();
-              mentorName = `${mentorData.firstName || ""} ${mentorData.lastName || ""}`.trim();
+              mentorName = `${mentorData.firstName || ""} ${
+                mentorData.lastName || ""
+              }`.trim();
             }
           }
         }
@@ -113,7 +124,7 @@ export default function MenteeProfile({ navigation }) {
           mentorName,
           mentorId,
         };
-        
+
         setUserData(combinedData);
         setEditData({
           rollNumber: menteeData.rollNumber || "",
@@ -161,7 +172,8 @@ export default function MenteeProfile({ navigation }) {
 
   const pickImage = async (type) => {
     try {
-      const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+      const { status } =
+        await ImagePicker.requestMediaLibraryPermissionsAsync();
 
       if (status !== "granted") {
         Alert.alert(
@@ -285,9 +297,7 @@ export default function MenteeProfile({ navigation }) {
 
   const updateSgpa = (sem, value) => {
     setSgpaInputs((prev) =>
-      prev.map((item) =>
-        item.sem === sem ? { ...item, sgpa: value } : item
-      )
+      prev.map((item) => (item.sem === sem ? { ...item, sgpa: value } : item))
     );
   };
 
@@ -307,8 +317,15 @@ export default function MenteeProfile({ navigation }) {
     const currentSem = parseInt(editData.currentSem);
     if (currentSem > 1) {
       for (let input of sgpaInputs) {
-        if (!input.sgpa || parseFloat(input.sgpa) < 0 || parseFloat(input.sgpa) > 10) {
-          Alert.alert("Error", `Please enter valid SGPA for Semester ${input.sem} (0-10)`);
+        if (
+          !input.sgpa ||
+          parseFloat(input.sgpa) < 0 ||
+          parseFloat(input.sgpa) > 10
+        ) {
+          Alert.alert(
+            "Error",
+            `Please enter valid SGPA for Semester ${input.sem} (0-10)`
+          );
           return;
         }
       }
@@ -382,7 +399,10 @@ export default function MenteeProfile({ navigation }) {
     if (!userData.sgpaHistory || userData.sgpaHistory.length === 0) {
       return "N/A";
     }
-    const total = userData.sgpaHistory.reduce((sum, item) => sum + item.sgpa, 0);
+    const total = userData.sgpaHistory.reduce(
+      (sum, item) => sum + item.sgpa,
+      0
+    );
     const cgpa = total / userData.sgpaHistory.length;
     return cgpa.toFixed(2);
   };
@@ -669,7 +689,9 @@ export default function MenteeProfile({ navigation }) {
             <Text style={styles.academicLabel}>CGPA</Text>
           </View>
           <View style={styles.academicCard}>
-            <Text style={styles.academicValue}>{userData.sgpaHistory?.length || 0}</Text>
+            <Text style={styles.academicValue}>
+              {userData.sgpaHistory?.length || 0}
+            </Text>
             <Text style={styles.academicLabel}>Completed Sems</Text>
           </View>
         </View>
@@ -692,7 +714,9 @@ export default function MenteeProfile({ navigation }) {
           {editing ? (
             <>
               <View style={styles.inputGroup}>
-                <Text style={styles.inputLabel}>First Name (from users db)</Text>
+                <Text style={styles.inputLabel}>
+                  First Name (from users db)
+                </Text>
                 <TextInput
                   style={[styles.input, styles.disabledInput]}
                   value={userData.firstName}
@@ -995,7 +1019,7 @@ export default function MenteeProfile({ navigation }) {
 
         <TouchableOpacity
           style={styles.navItem}
-          onPress={() => navigation.navigate("AskDoubt")}
+          onPress={() => navigation.navigate("MenteeChat")}
         >
           <Feather name="message-circle" size={24} color="#9ca3af" />
           <Text style={styles.navLabel}>Doubts</Text>

@@ -31,6 +31,8 @@ import MentorProfile from "./user_interfaces/mentor/MentorProfile";
 import MyMentees from "./user_interfaces/mentor/MyMentees";
 import MenteeProfile from "./user_interfaces/mentee/MenteeProfile";
 import MenteeDashboard from "./user_interfaces/mentee/MenteeDashboard";
+import MenteeChat from "./user_interfaces/mentee/MenteeChat";
+import AttendanceTracker from "./user_interfaces/mentee/Attendance";
 
 const Stack = createNativeStackNavigator();
 const CLERK_PUBLISHABLE_KEY =
@@ -76,8 +78,13 @@ export default function App() {
               />
 
               {/* Mentee screens  */}
-              <Stack.Screen name="MenteeDashboard" component={MenteeDashboard} />
+              <Stack.Screen
+                name="MenteeDashboard"
+                component={MenteeDashboard}
+              />
               <Stack.Screen name="MenteeProfile" component={MenteeProfile} />
+              <Stack.Screen name="MenteeChat" component={MenteeChat} />
+              <Stack.Screen name="Attendance" component={AttendanceTracker} />
               {/* Deptadmin screens */}
               <Stack.Screen name="Mentors" component={Mentors} />
               <Stack.Screen name="Announcements" component={Announcements} />
@@ -91,8 +98,6 @@ export default function App() {
               {/* Mentor screens */}
               <Stack.Screen name="MentorProfile" component={MentorProfile} />
               <Stack.Screen name="MyMentees" component={MyMentees} />
-
-
             </Stack.Navigator>
           </NavigationContainer>
         </ClerkProvider>

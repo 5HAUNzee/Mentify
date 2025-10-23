@@ -248,24 +248,22 @@ export default function MenteeDashboard({ navigation }) {
               <Text style={styles.actionText}>Submit Form</Text>
             </TouchableOpacity>
 
-            <TouchableOpacity
-              style={styles.actionBtn}
-              onPress={() => navigation.navigate("AskDoubt")}
-            >
-              <Ionicons
-                name="chatbubble-ellipses-outline"
-                size={24}
-                color="#2563EB"
-              />
-              <Text style={styles.actionText}>Ask Doubt</Text>
-            </TouchableOpacity>
+           
 
             <TouchableOpacity
               style={styles.actionBtn}
               onPress={() => navigation.navigate("Insights")}
             >
               <Ionicons name="bar-chart-outline" size={24} color="#2563EB" />
-              <Text style={styles.actionText}>View Insights</Text>
+              <Text style={styles.actionText}>View Progress</Text>
+            </TouchableOpacity>
+
+              <TouchableOpacity
+              style={styles.actionBtn}
+              onPress={() => navigation.navigate("Attendance")}
+            >
+              <Ionicons name="clipboard-outline" size={24} color="#2563EB" />
+              <Text style={styles.actionText}>track your Attendance</Text>
             </TouchableOpacity>
 
             <TouchableOpacity
@@ -299,7 +297,7 @@ export default function MenteeDashboard({ navigation }) {
 
         <TouchableOpacity
           style={styles.navItem}
-          onPress={() => navigation.navigate("AskDoubt")}
+          onPress={() => navigation.navigate("MenteeChat")}
         >
           <Feather name="message-circle" size={24} color="#9ca3af" />
           <Text style={styles.navLabel}>Doubts</Text>
