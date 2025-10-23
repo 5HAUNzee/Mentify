@@ -1,11 +1,114 @@
-import React from "react";
-import { View, Text, Image, TouchableOpacity, StyleSheet, ScrollView } from "react-native";
-import { Ionicons } from "@expo/vector-icons";
+import React, { useEffect, useState } from "react";
+import {
+  View,
+  Text,
+  Image,
+  TouchableOpacity,
+  StyleSheet,
+  ScrollView,
+  ActivityIndicator,
+  SafeAreaView,
+} from "react-native";
+import { Ionicons, Feather } from "@expo/vector-icons";
 import { useAuth } from "@clerk/clerk-expo";
+import {
+  doc,
+  getDoc,
+  collection,
+  query,
+  where,
+  getDocs,
+} from "firebase/firestore";
+import { db } from "../../firebase.config";
 
 export default function MenteeDashboard({ navigation }) {
-    const { signOut } = useAuth();
-    const handleSignOut = async () => {
+  const { signOut, userId } = useAuth();
+  const [loading, setLoading] = useState(true);
+  const [userData, setUserData] = useState({
+    firstName: "",
+    lastName: "",
+    rollNumber: "",
+    department: "",
+    college: "",
+    profilePic: null,
+    currentSem: "",
+    sgpaHistory: [],
+  });
+  const [mentorData, setMentorData] = useState({
+    name: "",
+    department: "",
+    profilePic: null,
+  });
+
+  useEffect(() => {
+    fetchDashboardData();
+  }, []);
+
+  const fetchDashboardData = async () => {
+    try {
+      setLoading(true);
+
+      // Fetch mentee info from users collection
+      const userDocRef = doc(db, "users", userId);
+      const userSnap = await getDoc(userDocRef);
+
+      if (!userSnap.exists()) {
+        console.log("User not found");
+        return;
+      }
+
+      const basicUserData = userSnap.data();
+
+      // Fetch mentee-specific data from mentees collection
+      const menteeDocRef = doc(db, "mentees", userId);
+      const menteeSnap = await getDoc(menteeDocRef);
+
+      let menteeData = {};
+      if (menteeSnap.exists()) {
+        menteeData = menteeSnap.data();
+      }
+
+      setUserData({
+        firstName: basicUserData.firstName || "",
+        lastName: basicUserData.lastName || "",
+        rollNumber: menteeData.rollNumber || "N/A",
+        department: basicUserData.department || "N/A",
+        college: basicUserData.college || "N/A",
+        profilePic: basicUserData.profilePic || null,
+        currentSem: menteeData.currentSem || "",
+        sgpaHistory: menteeData.sgpaHistory || [],
+      });
+
+      // Fetch mentor assignment
+      const assignmentsRef = collection(db, "assignments");
+      const q = query(assignmentsRef, where("menteeId", "==", userId));
+      const assignmentSnap = await getDocs(q);
+
+      if (!assignmentSnap.empty) {
+        const assignmentData = assignmentSnap.docs[0].data();
+        const mentorId = assignmentData.mentorId;
+
+        if (mentorId) {
+          const mentorDocRef = doc(db, "users", mentorId);
+          const mentorSnap = await getDoc(mentorDocRef);
+          if (mentorSnap.exists()) {
+            const mentor = mentorSnap.data();
+            setMentorData({
+              name: `${mentor.firstName || ""} ${mentor.lastName || ""}`.trim(),
+              department: mentor.department || "",
+              profilePic: mentor.profilePic || null,
+            });
+          }
+        }
+      }
+    } catch (err) {
+      console.error("Error fetching dashboard data:", err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleSignOut = async () => {
     try {
       await signOut();
       navigation.replace("Auth");
@@ -14,50 +117,80 @@ export default function MenteeDashboard({ navigation }) {
     }
   };
 
+  const calculateCGPA = () => {
+    if (!userData.sgpaHistory || userData.sgpaHistory.length === 0) {
+      return "N/A";
+    }
+    const total = userData.sgpaHistory.reduce(
+      (sum, item) => sum + item.sgpa,
+      0
+    );
+    return (total / userData.sgpaHistory.length).toFixed(2);
+  };
+
+  if (loading) {
+    return (
+      <SafeAreaView style={styles.container}>
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color="#2563EB" />
+          <Text style={styles.loadingText}>Loading dashboard...</Text>
+        </View>
+      </SafeAreaView>
+    );
+  }
+
   return (
-    <View style={styles.container}>
-  {/* Header */}
-  <View style={styles.header}>
-    <Text style={styles.headerTitle}>My Dashboard</Text>
-    <TouchableOpacity
-      onPress={handleSignOut}
-      style={{
-        backgroundColor: "#2563EB",
-        paddingVertical: 8,
-        paddingHorizontal: 15,
-        borderRadius: 8,
-      }}
-    >
-      <Text style={{ color: "white", fontWeight: "600" }}>Logout</Text>
-    </TouchableOpacity>
-  </View>
+    <SafeAreaView style={styles.container}>
+      {/* Header */}
+      <View style={styles.header}>
+        <Text style={styles.headerTitle}>My Dashboard</Text>
+        <TouchableOpacity onPress={handleSignOut} style={styles.logoutButton}>
+          <Text style={styles.logoutButtonText}>Logout</Text>
+        </TouchableOpacity>
+      </View>
 
-
-      <ScrollView showsVerticalScrollIndicator={false}>
+      {/* Scrollable Content */}
+      <ScrollView
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={{ ...styles.scrollContent, paddingBottom: 100 }}
+      >
         {/* Welcome Card */}
         <View style={styles.welcomeCard}>
-          <Image
-            source={{ uri: "https://i.pravatar.cc/100?img=3" }}
-            style={styles.profilePic}
-          />
+          {userData.profilePic ? (
+            <Image
+              source={{ uri: userData.profilePic }}
+              style={styles.profilePic}
+            />
+          ) : (
+            <View style={styles.profilePicPlaceholder}>
+              <Ionicons name="person" size={30} color="#9ca3af" />
+            </View>
+          )}
           <View style={{ flex: 1 }}>
-            <Text style={styles.welcomeText}>Welcome back, Alex!</Text>
-            <Text style={styles.detailsText}>CS2024001 • Computer Science</Text>
-            <Text style={styles.collegeText}>Goa College of Engineering</Text>
+            <Text style={styles.welcomeText}>
+              Welcome back, {userData.firstName}!
+            </Text>
+            <Text style={styles.detailsText}>
+              {userData.rollNumber} • {userData.department}
+            </Text>
+            <Text style={styles.collegeText}>{userData.college}</Text>
           </View>
         </View>
 
-        {/* Stats Grid */}
+        {/* Stats */}
         <View style={styles.statsRow}>
           <View style={styles.statCard}>
             <Ionicons name="document-text-outline" size={20} color="#2563EB" />
-            <Text style={styles.statValue}>3</Text>
+            <Text style={styles.statValue}>0</Text>
             <Text style={styles.statLabel}>Forms Submitted</Text>
           </View>
-
           <View style={styles.statCard}>
-            <Ionicons name="chatbubble-ellipses-outline" size={20} color="#10B981" />
-            <Text style={styles.statValue}>2</Text>
+            <Ionicons
+              name="chatbubble-ellipses-outline"
+              size={20}
+              color="#2563EB"
+            />
+            <Text style={styles.statValue}>0</Text>
             <Text style={styles.statLabel}>Active Doubts</Text>
           </View>
         </View>
@@ -65,95 +198,205 @@ export default function MenteeDashboard({ navigation }) {
         <View style={styles.statsRow}>
           <View style={styles.statCard}>
             <Ionicons name="trending-up-outline" size={20} color="#9333EA" />
-            <Text style={styles.statValue}>3.8</Text>
+            <Text style={styles.statValue}>{calculateCGPA()}</Text>
             <Text style={styles.statLabel}>Overall CGPA</Text>
           </View>
-
           <View style={styles.statCard}>
-            <Ionicons name="time-outline" size={20} color="#F59E0B" />
-            <Text style={styles.statValue}>2.1h</Text>
-            <Text style={styles.statLabel}>Mentor Response</Text>
+            <Ionicons name="school-outline" size={20} color="#F59E0B" />
+            <Text style={styles.statValue}>{userData.currentSem || "N/A"}</Text>
+            <Text style={styles.statLabel}>Current Semester</Text>
           </View>
-        </View>
-
-        {/* Performance Chart Placeholder */}
-        <View style={styles.chartCard}>
-          <Text style={styles.chartTitle}>Academic Performance Trend</Text>
-          <Image
-            source={{ uri: "https://quickchart.io/chart?c={type:'line',data:{labels:['Spring 2024','Fall 2024'],datasets:[{label:'CGPA',data:[3.25,3.5,3.65,3.9],fill:false,borderColor:'green'}]}}" }}
-            style={styles.chartImage}
-          />
         </View>
 
         {/* Mentor Card */}
-        <View style={styles.mentorCard}>
-          <Text style={styles.mentorTitle}>My Mentor</Text>
-          <View style={styles.mentorInfo}>
-            <Image
-              source={{ uri: "https://i.pravatar.cc/100?img=5" }}
-              style={styles.mentorPic}
-            />
-            <View style={{ flex: 1 }}>
-              <Text style={styles.mentorName}>Dr. Emily Rodriguez</Text>
-              <Text style={styles.mentorDept}>Computer Science</Text>
-              <Text style={styles.mentorAvail}>Available for consultation</Text>
+        {mentorData.name && (
+          <View style={styles.mentorCard}>
+            <Text style={styles.mentorTitle}>My Mentor</Text>
+            <View style={styles.mentorInfo}>
+              {mentorData.profilePic ? (
+                <Image
+                  source={{ uri: mentorData.profilePic }}
+                  style={styles.mentorPic}
+                />
+              ) : (
+                <View style={styles.mentorPicPlaceholder}>
+                  <Ionicons name="person" size={24} color="#9ca3af" />
+                </View>
+              )}
+              <View style={{ flex: 1 }}>
+                <Text style={styles.mentorName}>{mentorData.name}</Text>
+                <Text style={styles.mentorDept}>{mentorData.department}</Text>
+                <Text style={styles.mentorAvail}>Available for consultation</Text>
+              </View>
+              <TouchableOpacity style={styles.contactBtn}>
+                <Ionicons name="chatbubbles-outline" size={18} color="white" />
+                <Text style={styles.contactText}>Contact</Text>
+              </TouchableOpacity>
             </View>
-            <TouchableOpacity style={styles.contactBtn}>
-              <Ionicons name="chatbubbles-outline" size={18} color="white" />
-              <Text style={styles.contactText}>Contact</Text>
-            </TouchableOpacity>
           </View>
-        </View>
+        )}
 
         {/* Quick Actions */}
         <View style={styles.actionsCard}>
           <Text style={styles.mentorTitle}>Quick Actions</Text>
           <View style={styles.actionsGrid}>
-            {[
-              { label: "Submit Form", icon: "document-text-outline" },
-              { label: "Ask Doubt", icon: "chatbubble-ellipses-outline" },
-              { label: "View Insights", icon: "bar-chart-outline" },
-              { label: "My Profile", icon: "person-outline" },
-            ].map((item, index) => (
-              <TouchableOpacity key={index} style={styles.actionBtn}>
-                <Ionicons name={item.icon} size={24} color="#2563EB" />
-                <Text style={styles.actionText}>{item.label}</Text>
-              </TouchableOpacity>
-            ))}
+            <TouchableOpacity
+              style={styles.actionBtn}
+              onPress={() => navigation.navigate("SubmitForm")}
+            >
+              <Ionicons name="document-text-outline" size={24} color="#2563EB" />
+              <Text style={styles.actionText}>Submit Form</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={styles.actionBtn}
+              onPress={() => navigation.navigate("AskDoubt")}
+            >
+              <Ionicons
+                name="chatbubble-ellipses-outline"
+                size={24}
+                color="#2563EB"
+              />
+              <Text style={styles.actionText}>Ask Doubt</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={styles.actionBtn}
+              onPress={() => navigation.navigate("Insights")}
+            >
+              <Ionicons name="bar-chart-outline" size={24} color="#2563EB" />
+              <Text style={styles.actionText}>View Insights</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={styles.actionBtn}
+              onPress={() => navigation.navigate("MenteeProfile")}
+            >
+              <Ionicons name="person-outline" size={24} color="#2563EB" />
+              <Text style={styles.actionText}>My Profile</Text>
+            </TouchableOpacity>
           </View>
         </View>
       </ScrollView>
 
       {/* Bottom Navigation */}
-      
-    </View>
+      <View style={styles.bottomNav}>
+        <TouchableOpacity
+          style={styles.navItem}
+          onPress={() => navigation.navigate("MenteeDashboard")}
+        >
+          <Feather name="home" size={24} color="#2563EB" />
+          <Text style={[styles.navLabel, styles.navLabelActive]}>Home</Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity
+          style={styles.navItem}
+          onPress={() => navigation.navigate("SubmitForm")}
+        >
+          <Feather name="file-text" size={24} color="#9ca3af" />
+          <Text style={styles.navLabel}>Forms</Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity
+          style={styles.navItem}
+          onPress={() => navigation.navigate("AskDoubt")}
+        >
+          <Feather name="message-circle" size={24} color="#9ca3af" />
+          <Text style={styles.navLabel}>Doubts</Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity
+          style={styles.navItem}
+          onPress={() => navigation.navigate("MenteeProfile")}
+        >
+          <Feather name="user" size={24} color="#9ca3af" />
+          <Text style={styles.navLabel}>Profile</Text>
+        </TouchableOpacity>
+      </View>
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: "#f8fafc" },
+  container: {
+    flex: 1,
+    backgroundColor: "#f8fafc",
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  loadingText: {
+    marginTop: 12,
+    fontSize: 14,
+    color: "#6b7280",
+  },
   header: {
     padding: 20,
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
+    backgroundColor: "#fff",
+    borderBottomWidth: 1,
+    borderBottomColor: "#e5e7eb",
   },
-  headerTitle: { fontSize: 18, fontWeight: "600" },
-  logoutText: { color: "#2563EB", fontWeight: "500" },
-
+  headerTitle: {
+    fontSize: 18,
+    fontWeight: "600",
+  },
+  logoutButton: {
+    backgroundColor: "#2563EB",
+    paddingVertical: 8,
+    paddingHorizontal: 15,
+    borderRadius: 8,
+  },
+  logoutButtonText: {
+    color: "white",
+    fontWeight: "600",
+  },
+  scrollContent: {
+    paddingBottom: 20,
+  },
   welcomeCard: {
     flexDirection: "row",
-    backgroundColor: "#d1fae5",
+    backgroundColor: "#60A5FA",
     margin: 15,
     padding: 15,
     borderRadius: 10,
     alignItems: "center",
+    shadowColor: "#000",
+    shadowOpacity: 0.05,
+    shadowRadius: 3,
+    elevation: 2,
   },
-  profilePic: { width: 60, height: 60, borderRadius: 30, marginRight: 15 },
-  welcomeText: { fontSize: 16, fontWeight: "bold" },
-  detailsText: { color: "#374151" },
-  collegeText: { color: "#6b7280" },
-
+  profilePic: {
+    width: 60,
+    height: 60,
+    borderRadius: 30,
+    marginRight: 15,
+  },
+  profilePicPlaceholder: {
+    width: 60,
+    height: 60,
+    borderRadius: 30,
+    marginRight: 15,
+    backgroundColor: "#f3f4f6",
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  welcomeText: {
+    fontSize: 16,
+    fontWeight: "bold",
+  },
+  detailsText: {
+    color: "#374151",
+    marginTop: 2,
+  },
+  collegeText: {
+    color: "#6b7280",
+    marginTop: 2,
+  },
   statsRow: {
     flexDirection: "row",
     justifyContent: "space-between",
@@ -171,30 +414,63 @@ const styles = StyleSheet.create({
     shadowRadius: 3,
     elevation: 2,
   },
-  statValue: { fontSize: 20, fontWeight: "bold", marginVertical: 5 },
-  statLabel: { color: "#6b7280" },
-
-  chartCard: {
-    backgroundColor: "white",
-    margin: 15,
-    padding: 15,
-    borderRadius: 10,
+  statValue: {
+    fontSize: 20,
+    fontWeight: "bold",
+    marginVertical: 5,
   },
-  chartTitle: { fontSize: 15, fontWeight: "600", marginBottom: 10 },
-  chartImage: { width: "100%", height: 180, borderRadius: 8 },
-
+  statLabel: {
+    color: "#6b7280",
+    textAlign: "center",
+    fontSize: 12,
+  },
   mentorCard: {
     backgroundColor: "white",
     margin: 15,
     padding: 15,
     borderRadius: 10,
+    shadowColor: "#000",
+    shadowOpacity: 0.05,
+    shadowRadius: 3,
+    elevation: 2,
   },
-  mentorTitle: { fontSize: 16, fontWeight: "600", marginBottom: 10 },
-  mentorInfo: { flexDirection: "row", alignItems: "center" },
-  mentorPic: { width: 55, height: 55, borderRadius: 30, marginRight: 10 },
-  mentorName: { fontWeight: "bold", fontSize: 15 },
-  mentorDept: { color: "#374151" },
-  mentorAvail: { color: "#6b7280", fontSize: 12 },
+  mentorTitle: {
+    fontSize: 16,
+    fontWeight: "600",
+    marginBottom: 10,
+  },
+  mentorInfo: {
+    flexDirection: "row",
+    alignItems: "center",
+  },
+  mentorPic: {
+    width: 55,
+    height: 55,
+    borderRadius: 30,
+    marginRight: 10,
+  },
+  mentorPicPlaceholder: {
+    width: 55,
+    height: 55,
+    borderRadius: 30,
+    marginRight: 10,
+    backgroundColor: "#f3f4f6",
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  mentorName: {
+    fontWeight: "bold",
+    fontSize: 15,
+  },
+  mentorDept: {
+    color: "#374151",
+    marginTop: 2,
+  },
+  mentorAvail: {
+    color: "#6b7280",
+    fontSize: 12,
+    marginTop: 2,
+  },
   contactBtn: {
     backgroundColor: "#2563EB",
     paddingVertical: 6,
@@ -208,12 +484,15 @@ const styles = StyleSheet.create({
     fontWeight: "500",
     marginLeft: 5,
   },
-
   actionsCard: {
     backgroundColor: "white",
     margin: 15,
     padding: 15,
     borderRadius: 10,
+    shadowColor: "#000",
+    shadowOpacity: 0.05,
+    shadowRadius: 3,
+    elevation: 2,
   },
   actionsGrid: {
     flexDirection: "row",
@@ -228,16 +507,37 @@ const styles = StyleSheet.create({
     alignItems: "center",
     marginTop: 10,
   },
-  actionText: { color: "#1e3a8a", fontWeight: "500", marginTop: 8 },
-
+  actionText: {
+    color: "#1e3a8a",
+    fontWeight: "500",
+    marginTop: 8,
+    textAlign: "center",
+  },
   bottomNav: {
     flexDirection: "row",
-    justifyContent: "space-around",
+    backgroundColor: "#fff",
     borderTopWidth: 1,
-    borderColor: "#e5e7eb",
+    borderTopColor: "#e5e7eb",
     paddingVertical: 10,
-    backgroundColor: "white",
+    paddingHorizontal: 16,
+    justifyContent: "space-around",
+    position: "absolute",
+    bottom: 0,
+    left: 0,
+    right: 0,
+    zIndex: 10,
   },
-  navItem: { alignItems: "center" },
-  navLabel: { color: "#2563EB", fontSize: 12, marginTop: 2 },
+  navItem: {
+    alignItems: "center",
+    paddingVertical: 5,
+  },
+  navLabel: {
+    fontSize: 12,
+    color: "#9ca3af",
+    marginTop: 2,
+  },
+  navLabelActive: {
+    color: "#2563EB",
+    fontWeight: "600",
+  },
 });

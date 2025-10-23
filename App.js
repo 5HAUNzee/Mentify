@@ -27,8 +27,10 @@ import Forms from "./user_interfaces/college_admin/Forms";
 import CollegeProfile from "./user_interfaces/college_admin/CollegeProfile";
 import CreateForm from "./user_interfaces/college_admin/CreateForm";
 import ViewForm from "./user_interfaces/college_admin/ViewForm";
-
-import MenteeTabs from "./user_interfaces/mentee/MenteeTabs";
+import MentorProfile from "./user_interfaces/mentor/MentorProfile";
+import MyMentees from "./user_interfaces/mentor/MyMentees";
+import MenteeProfile from "./user_interfaces/mentee/MenteeProfile";
+import MenteeDashboard from "./user_interfaces/mentee/MenteeDashboard";
 
 const Stack = createNativeStackNavigator();
 const CLERK_PUBLISHABLE_KEY =
@@ -74,7 +76,8 @@ export default function App() {
               />
 
               {/* Mentee screens  */}
-              <Stack.Screen name="MenteeDashboard" component={MenteeTabs} />
+              <Stack.Screen name="MenteeDashboard" component={MenteeDashboard} />
+              <Stack.Screen name="MenteeProfile" component={MenteeProfile} />
               {/* Deptadmin screens */}
               <Stack.Screen name="Mentors" component={Mentors} />
               <Stack.Screen name="Announcements" component={Announcements} />
@@ -85,6 +88,9 @@ export default function App() {
               <Stack.Screen name="CollegeProfile" component={CollegeProfile} />
               <Stack.Screen name="CreateForm" component={CreateForm} />
               <Stack.Screen name="ViewForm" component={ViewForm} />
+              {/* Mentor screens */}
+              <Stack.Screen name="MentorProfile" component={MentorProfile} />
+              <Stack.Screen name="MyMentees" component={MyMentees} />
 
 
             </Stack.Navigator>
