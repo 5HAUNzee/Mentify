@@ -138,12 +138,12 @@ export default function ViewForm({ navigation, route }) {
           <Text style={styles.metadataLabel}>{formData.semester}</Text>
           <View style={styles.metadataRow}>
             <Text style={styles.metadataItem}>
-              Academic Year: {formData.academicYear || "2024-25"}
+
             </Text>
           </View>
           <View style={styles.metadataRow}>
             <Text style={styles.metadataItem}>
-              Created by: Dr. Sarah Johnson
+              Created by: Collegeadmin
             </Text>
           </View>
           <View style={styles.metadataRow}>

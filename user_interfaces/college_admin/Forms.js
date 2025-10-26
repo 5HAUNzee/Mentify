@@ -19,6 +19,7 @@ import {
   updateDoc,
   addDoc,
   doc,
+  getDoc,
   Timestamp,
 } from "firebase/firestore";
 import { db } from "../../firebase.config";
@@ -523,6 +524,7 @@ export default function FormManagement({ navigation }) {
                           romanNumerals[sem - 1]
                         } semester students`,
                   semester: `Sem ${sem}`,
+                  semesterNumber: sem, // ADDED: Store semester as number too
                   isOtherForm: false,
                   semesters: [`Sem ${sem}`],
                   academicYear: "2024-25",
@@ -576,24 +578,64 @@ export default function FormManagement({ navigation }) {
     const badge = getStatusBadgeStyle(form.status);
     const deployments = form.deployments || 0;
 
+    // CORRECTED handleSendForm function with semester number matching
     const handleSendForm = async () => {
       try {
-        // Get mentees of the specific semester
+        // Extract semester number from form.semester (e.g., "Sem 2" -> 2)
+        const formSemesterNumber = form.semesterNumber || 
+          parseInt(form.semester.replace("Sem ", ""));
+        
+        console.log("Looking for students in semester:", formSemesterNumber);
+        
+        // Get all mentees
         const menteesQuery = query(
-          collection(db, "users"),
-          where("role", "==", "mentee"),
-          where("currentSemester", "==", form.semester),
-          where("college", "==", "Goa College of Engineering")
+          collection(db, "mentees")
         );
 
         const menteesSnapshot = await getDocs(menteesQuery);
-        const menteesList = menteesSnapshot.docs.map((doc) => ({
-          id: doc.id,
-          ...doc.data(),
-        }));
+        const menteesList = [];
+
+        // Check each mentee's semester
+        for (const menteeDoc of menteesSnapshot.docs) {
+          const menteeData = menteeDoc.data();
+          const menteeId = menteeDoc.id;
+          
+          // Get current semester (could be number or string)
+          let currentSem = menteeData.currentSem;
+          
+          // Convert to number if it's a string
+          if (typeof currentSem === 'string') {
+            currentSem = parseInt(currentSem.replace("Sem ", "").replace("sem ", ""));
+          }
+          
+          console.log(`Mentee ${menteeId} semester:`, currentSem, typeof currentSem);
+
+          // Match semester numbers
+          if (currentSem === formSemesterNumber) {
+            // Get user data from users collection
+            try {
+              const userDoc = await getDoc(doc(db, "users", menteeId));
+              if (userDoc.exists()) {
+                const userData = userDoc.data();
+                menteesList.push({
+                  id: menteeId,
+                  ...userData,
+                  currentSemester: form.semester, // Use form's semester format
+                });
+              }
+            } catch (err) {
+              console.log("Error getting user data:", err);
+            }
+          }
+        }
+
+        console.log("Found students:", menteesList.length);
 
         if (menteesList.length === 0) {
-          Alert.alert("No Students", `No students found in ${form.semester}`);
+          Alert.alert(
+            "No Students", 
+            `No students found in semester ${formSemesterNumber}. Make sure students have currentSem set to ${formSemesterNumber} in the mentees collection.`
+          );
           return;
         }
 
@@ -606,47 +648,35 @@ export default function FormManagement({ navigation }) {
               text: "Send",
               onPress: async () => {
                 try {
-                  // Create form submissions for each mentee
-                  const submissions = menteesList.map((mentee) =>
-                    addDoc(collection(db, "formSubmissions"), {
-                      formId: form.id,
-                      formTitle: form.title,
-                      menteeId: mentee.id,
-                      menteeName: `${mentee.firstName} ${mentee.lastName}`,
-                      semester: form.semester,
-                      status: "pending",
-                      sentAt: Timestamp.now(),
-                      deadline: form.deadline,
-                    })
-                  );
-
-                  await Promise.all(submissions);
-
-                  // Update form with deployment info
+                  // Update form status to deployed
                   await updateDoc(doc(db, "forms", form.id), {
                     status: "deployed",
                     deployments: (form.deployments || 0) + 1,
                     lastDeployedAt: Timestamp.now(),
+                    deployedAt: Timestamp.now(),
+                    deployedTo: menteesList.map((m) => m.id),
                     deploymentHistory: [
                       ...(form.deploymentHistory || []),
                       {
-                        date: new Date().toLocaleDateString(),
+                        date: new Date().toISOString(),
                         students: menteesList.length,
                         semester: form.semester,
+                        semesterNumber: formSemesterNumber,
                         deadline: form.deadline,
                         deployedBy: "Admin",
+                        menteeIds: menteesList.map((m) => m.id),
                       },
                     ],
                   });
 
                   Alert.alert(
                     "Success",
-                    `Form sent to ${menteesList.length} students in ${form.semester}`
+                    `Form deployed to ${menteesList.length} student(s) in ${form.semester}. They can now access it.`
                   );
                   fetchForms();
                 } catch (err) {
                   console.error("Error sending form:", err);
-                  Alert.alert("Error", "Failed to send form");
+                  Alert.alert("Error", "Failed to send form: " + err.message);
                 }
               },
             },
@@ -654,7 +684,7 @@ export default function FormManagement({ navigation }) {
         );
       } catch (err) {
         console.error("Error fetching students:", err);
-        Alert.alert("Error", "Failed to fetch students");
+        Alert.alert("Error", "Failed to fetch students: " + err.message);
       }
     };
 
@@ -690,15 +720,9 @@ export default function FormManagement({ navigation }) {
           </Text>
         )}
 
-        {form.status === "deployed" && (
+        {form.status === "deployed" && form.lastDeployedAt && (
           <Text style={styles.formDeployed}>
-            Deployed: {new Date(form.deployedAt).toLocaleDateString()}
-          </Text>
-        )}
-
-        {form.studentsNotified && (
-          <Text style={styles.formNotified}>
-            Students notified: {form.studentsNotified}
+            Deployed: {new Date(form.lastDeployedAt.toDate()).toLocaleDateString()}
           </Text>
         )}
 

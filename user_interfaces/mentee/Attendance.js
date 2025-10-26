@@ -27,20 +27,23 @@ import {
 } from "firebase/firestore";
 import { db } from "../../firebase.config";
 import { useAuth } from "@clerk/clerk-expo";
+import { deleteDoc } from "firebase/firestore";
 
 export default function AttendanceTracker({ navigation }) {
   const { signOut, userId } = useAuth();
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [subjects, setSubjects] = useState([]);
-  
+
   // Modal states
   const [addSubjectModalVisible, setAddSubjectModalVisible] = useState(false);
   const [addClassModalVisible, setAddClassModalVisible] = useState(false);
   const [subjectName, setSubjectName] = useState("");
   const [subjectCode, setSubjectCode] = useState("");
   const [selectedSubject, setSelectedSubject] = useState(null);
-  const [classDate, setClassDate] = useState(new Date().toISOString().split('T')[0]);
+  const [classDate, setClassDate] = useState(
+    new Date().toISOString().split("T")[0]
+  );
   const [attended, setAttended] = useState(true);
   const [saving, setSaving] = useState(false);
 
@@ -109,6 +112,63 @@ export default function AttendanceTracker({ navigation }) {
     }
   };
 
+  const deleteSubject = async (subjectId) => {
+    Alert.alert(
+      "Delete Subject",
+      "Are you sure you want to delete this subject and all its attendance records?",
+      [
+        { text: "Cancel", style: "cancel" },
+        {
+          text: "Delete",
+          style: "destructive",
+          onPress: async () => {
+            try {
+              setSaving(true);
+
+              // Delete all attendance records for this subject
+              const attendanceRef = collection(db, "attendance");
+              const attendanceQuery = query(
+                attendanceRef,
+                where("subjectId", "==", subjectId),
+                where("menteeId", "==", userId)
+              );
+              const attendanceSnap = await getDocs(attendanceQuery);
+
+              const deletePromises = attendanceSnap.docs.map((docSnap) =>
+                updateDoc(doc(db, "attendance", docSnap.id), {
+                  deleted: true,
+                })
+              );
+
+              // You can use deleteDoc instead of updateDoc if you want to remove them entirely:
+              // import { deleteDoc } from "firebase/firestore";
+              // const deletePromises = attendanceSnap.docs.map((docSnap) =>
+              //   deleteDoc(doc(db, "attendance", docSnap.id))
+              // );
+
+              await Promise.all(deletePromises);
+
+              // Delete the subject itself
+              const subjectRef = doc(db, "subjects", subjectId);
+              await deleteDoc(subjectRef);
+
+              Alert.alert(
+                "Deleted",
+                "Subject and all records deleted successfully!"
+              );
+              await fetchAttendanceData();
+            } catch (err) {
+              console.error("Error deleting subject:", err);
+              Alert.alert("Error", "Failed to delete subject");
+            } finally {
+              setSaving(false);
+            }
+          },
+        },
+      ]
+    );
+  };
+
   const onRefresh = async () => {
     setRefreshing(true);
     await fetchAttendanceData();
@@ -162,7 +222,7 @@ export default function AttendanceTracker({ navigation }) {
 
   const openAddClassModal = (subject) => {
     setSelectedSubject(subject);
-    setClassDate(new Date().toISOString().split('T')[0]);
+    setClassDate(new Date().toISOString().split("T")[0]);
     setAttended(true);
     setAddClassModalVisible(true);
   };
@@ -295,13 +355,23 @@ export default function AttendanceTracker({ navigation }) {
                   <Text style={styles.subjectName}>{subject.name}</Text>
                   <Text style={styles.subjectCode}>{subject.code}</Text>
                 </View>
-                <TouchableOpacity
-                  style={styles.addClassButton}
-                  onPress={() => openAddClassModal(subject)}
-                >
-                  <Feather name="plus" size={16} color="#2563EB" />
-                  <Text style={styles.addClassButtonText}>Add Class</Text>
-                </TouchableOpacity>
+
+                <View style={{ flexDirection: "row", gap: 8 }}>
+                  <TouchableOpacity
+                    style={styles.addClassButton}
+                    onPress={() => openAddClassModal(subject)}
+                  >
+                    <Feather name="plus" size={16} color="#2563EB" />
+                    <Text style={styles.addClassButtonText}>Add Class</Text>
+                  </TouchableOpacity>
+
+                  <TouchableOpacity
+                    style={styles.deleteButton}
+                    onPress={() => deleteSubject(subject.id)}
+                  >
+                    <Feather name="trash-2" size={16} color="#ef4444" />
+                  </TouchableOpacity>
+                </View>
               </View>
 
               {/* Attendance Stats */}
@@ -309,7 +379,9 @@ export default function AttendanceTracker({ navigation }) {
                 style={[
                   styles.attendanceStats,
                   {
-                    backgroundColor: getPercentageBackground(subject.percentage),
+                    backgroundColor: getPercentageBackground(
+                      subject.percentage
+                    ),
                   },
                 ]}
               >
@@ -352,7 +424,8 @@ export default function AttendanceTracker({ navigation }) {
                     <Text style={styles.warningText}>
                       Warning: Attendance below 75%! You need to attend{" "}
                       {Math.ceil(
-                        (0.75 * subject.totalClasses - subject.attendedClasses) /
+                        (0.75 * subject.totalClasses -
+                          subject.attendedClasses) /
                           0.25
                       )}{" "}
                       more consecutive classes to reach 75%
@@ -489,9 +562,7 @@ export default function AttendanceTracker({ navigation }) {
               <Text style={styles.modalTitle}>
                 Record Attendance - {selectedSubject?.name}
               </Text>
-              <TouchableOpacity
-                onPress={() => setAddClassModalVisible(false)}
-              >
+              <TouchableOpacity onPress={() => setAddClassModalVisible(false)}>
                 <Feather name="x" size={24} color="#6b7280" />
               </TouchableOpacity>
             </View>
@@ -632,6 +703,14 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: "#6b7280",
   },
+  deleteButton: {
+    backgroundColor: "#FEE2E2",
+    padding: 8,
+    borderRadius: 8,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+
   addSubjectButton: {
     flexDirection: "row",
     alignItems: "center",

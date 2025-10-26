@@ -250,7 +250,7 @@ export default function MentorDashboard({ navigation }) {
           <View style={styles.quickActionsGrid}>
             <TouchableOpacity
               style={styles.actionCard}
-              onPress={() => navigation.navigate("ReviewForms")}
+              onPress={() => navigation.navigate("MentorForms")}
             >
               <View style={styles.actionIconContainer}>
                 <Feather name="file-text" size={28} color="#3b82f6" />
@@ -267,7 +267,7 @@ export default function MentorDashboard({ navigation }) {
 
             <TouchableOpacity
               style={styles.actionCard}
-              onPress={() => navigation.navigate("AnswerQueries")}
+              onPress={() => navigation.navigate("MentorQueries")}
             >
               <View style={styles.actionIconContainer}>
                 <Feather name="message-circle" size={28} color="#10b981" />
@@ -284,7 +284,7 @@ export default function MentorDashboard({ navigation }) {
 
             <TouchableOpacity
               style={styles.actionCard}
-              onPress={() => navigation.navigate("MenteeProgress")}
+              onPress={() => navigation.navigate("MentorProgress")}
             >
               <View style={styles.actionIconContainer}>
                 <Feather name="users" size={28} color="#8b5cf6" />
@@ -294,7 +294,7 @@ export default function MentorDashboard({ navigation }) {
 
             <TouchableOpacity
               style={styles.actionCard}
-              onPress={() => navigation.navigate("SendMessage")}
+              onPress={() => navigation.navigate("MentorAnnouncements")}
             >
               <View style={styles.actionIconContainer}>
                 <Feather name="send" size={28} color="#f59e0b" />

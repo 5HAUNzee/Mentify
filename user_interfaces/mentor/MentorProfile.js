@@ -15,8 +15,7 @@ import {
 import { Feather } from "@expo/vector-icons";
 import * as ImagePicker from "expo-image-picker";
 import { doc, getDoc, updateDoc } from "firebase/firestore";
-import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
-import { db, storage } from "../../firebase.config";
+import { db } from "../../firebase.config";
 import { useAuth } from "@clerk/clerk-expo";
 
 export default function MentorProfile({ navigation }) {
@@ -25,7 +24,6 @@ export default function MentorProfile({ navigation }) {
   const [saving, setSaving] = useState(false);
   const [editing, setEditing] = useState(false);
 
-  // User data
   const [userData, setUserData] = useState({
     firstName: "",
     lastName: "",
@@ -41,7 +39,6 @@ export default function MentorProfile({ navigation }) {
     signature: null,
   });
 
-  // Edit form data
   const [editData, setEditData] = useState({
     firstName: "",
     lastName: "",
@@ -98,7 +95,8 @@ export default function MentorProfile({ navigation }) {
 
   const pickImage = async (type) => {
     try {
-      const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+      const { status } =
+        await ImagePicker.requestMediaLibraryPermissionsAsync();
 
       if (status !== "granted") {
         Alert.alert(
@@ -128,14 +126,31 @@ export default function MentorProfile({ navigation }) {
     try {
       setUploadingImage(true);
 
-      const response = await fetch(uri);
-      const blob = await response.blob();
+      const data = new FormData();
+      data.append("file", {
+        uri,
+        type: "image/jpeg",
+        name: `${type}_${userId}_${Date.now()}.jpg`,
+      });
+      data.append("upload_preset", "Mentify"); // Replace with your Cloudinary preset
 
-      const fileName = `${type}_${userId}_${Date.now()}.jpg`;
-      const storageRef = ref(storage, `users/${userId}/${fileName}`);
+      const cloudName = "dfqa2ojqr"; // Replace with your Cloudinary cloud name
+      const response = await fetch(
+        `https://api.cloudinary.com/v1_1/${cloudName}/image/upload`,
+        {
+          method: "POST",
+          body: data,
+        }
+      );
 
-      await uploadBytes(storageRef, blob);
-      const downloadURL = await getDownloadURL(storageRef);
+      const result = await response.json();
+      console.log("Cloudinary response:", result);
+
+      if (!result.secure_url) {
+        throw new Error(result.error?.message || "Upload failed");
+      }
+
+      const downloadURL = result.secure_url;
 
       // Update Firestore
       const userDocRef = doc(db, "users", userId);
@@ -158,7 +173,7 @@ export default function MentorProfile({ navigation }) {
       );
       setImageModalVisible(false);
     } catch (err) {
-      console.error("Error uploading image:", err);
+      console.error("Error uploading to Cloudinary:", err);
       Alert.alert("Error", "Failed to upload image");
     } finally {
       setUploadingImage(false);
@@ -187,7 +202,13 @@ export default function MentorProfile({ navigation }) {
 
       setUserData((prev) => ({
         ...prev,
-        ...editData,
+        firstName: editData.firstName.trim(),
+        lastName: editData.lastName.trim(),
+        email: editData.email.trim(),
+        phone: editData.phone.trim(),
+        specialization: editData.specialization.trim(),
+        experience: editData.experience.trim(),
+        qualification: editData.qualification.trim(),
       }));
 
       Alert.alert("Success", "Profile updated successfully");
@@ -209,7 +230,7 @@ export default function MentorProfile({ navigation }) {
     return (
       <SafeAreaView style={styles.container}>
         <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color="#f59e0b" />
+          <ActivityIndicator size="large" color="#2563EB" />
           <Text style={styles.loadingText}>Loading profile...</Text>
         </View>
       </SafeAreaView>
@@ -218,9 +239,8 @@ export default function MentorProfile({ navigation }) {
 
   return (
     <SafeAreaView style={styles.container}>
-      {/* Header */}
       <View style={styles.header}>
-        <Text style={styles.headerTitle}>Profile</Text>
+        <Text style={styles.headerTitle}>My Profile</Text>
         <TouchableOpacity onPress={handleSignOut}>
           <Text style={styles.logoutBtn}>Logout</Text>
         </TouchableOpacity>
@@ -231,7 +251,6 @@ export default function MentorProfile({ navigation }) {
         showsVerticalScrollIndicator={false}
         contentContainerStyle={styles.contentContainer}
       >
-        {/* Profile Picture Section */}
         <View style={styles.profileSection}>
           <TouchableOpacity
             style={styles.profilePicContainer}
@@ -253,12 +272,11 @@ export default function MentorProfile({ navigation }) {
           </TouchableOpacity>
 
           <Text style={styles.profileName}>
-            Dr. {userData.firstName} {userData.lastName}
+            {userData.firstName} {userData.lastName}
           </Text>
           <Text style={styles.profileRole}>Mentor</Text>
         </View>
 
-        {/* Role Badge */}
         <View style={styles.roleBadgeContainer}>
           <View style={styles.roleBadge}>
             <Text style={styles.roleBadgeText}>Mentor</Text>
@@ -268,7 +286,6 @@ export default function MentorProfile({ navigation }) {
           </View>
         </View>
 
-        {/* Personal Information Card */}
         <View style={styles.infoCard}>
           <View style={styles.cardHeader}>
             <Text style={styles.cardTitle}>Personal Information</Text>
@@ -277,7 +294,7 @@ export default function MentorProfile({ navigation }) {
                 style={styles.editButton}
                 onPress={() => setEditing(true)}
               >
-                <Feather name="edit-2" size={16} color="#f59e0b" />
+                <Feather name="edit-2" size={16} color="#2563EB" />
                 <Text style={styles.editButtonText}>Edit</Text>
               </TouchableOpacity>
             )}
@@ -416,7 +433,7 @@ export default function MentorProfile({ navigation }) {
                 <View style={styles.infoContent}>
                   <Text style={styles.infoLabel}>Full Name</Text>
                   <Text style={styles.infoValue}>
-                    Dr. {userData.firstName} {userData.lastName}
+                    {userData.firstName} {userData.lastName}
                   </Text>
                 </View>
               </View>
@@ -488,7 +505,6 @@ export default function MentorProfile({ navigation }) {
           )}
         </View>
 
-        {/* Signature Section */}
         <View style={styles.infoCard}>
           <Text style={styles.cardTitle}>Digital Signature</Text>
           <TouchableOpacity
@@ -512,7 +528,6 @@ export default function MentorProfile({ navigation }) {
         </View>
       </ScrollView>
 
-      {/* Image Upload Modal */}
       <Modal
         visible={imageModalVisible}
         animationType="slide"
@@ -523,7 +538,8 @@ export default function MentorProfile({ navigation }) {
           <View style={styles.modalContent}>
             <View style={styles.modalHeader}>
               <Text style={styles.modalTitle}>
-                Upload {imageType === "profile" ? "Profile Picture" : "Signature"}
+                Upload{" "}
+                {imageType === "profile" ? "Profile Picture" : "Signature"}
               </Text>
               <TouchableOpacity onPress={() => setImageModalVisible(false)}>
                 <Feather name="x" size={24} color="#6b7280" />
@@ -537,10 +553,10 @@ export default function MentorProfile({ navigation }) {
                 disabled={uploadingImage}
               >
                 {uploadingImage ? (
-                  <ActivityIndicator size="small" color="#f59e0b" />
+                  <ActivityIndicator size="small" color="#2563EB" />
                 ) : (
                   <>
-                    <Feather name="image" size={24} color="#f59e0b" />
+                    <Feather name="image" size={24} color="#2563EB" />
                     <Text style={styles.imageOptionText}>
                       Choose from Gallery
                     </Text>
@@ -551,38 +567,6 @@ export default function MentorProfile({ navigation }) {
           </View>
         </View>
       </Modal>
-
-      {/* Bottom Navigation */}
-      <View style={styles.bottomNav}>
-        <TouchableOpacity
-          style={styles.navItem}
-          onPress={() => navigation.navigate("MentorDashboard")}
-        >
-          <Feather name="home" size={24} color="#9ca3af" />
-          <Text style={styles.navLabel}>Dashboard</Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity
-          style={styles.navItem}
-          onPress={() => navigation.navigate("MyMentees")}
-        >
-          <Feather name="users" size={24} color="#9ca3af" />
-          <Text style={styles.navLabel}>Mentees</Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity
-          style={styles.navItem}
-          onPress={() => navigation.navigate("Messages")}
-        >
-          <Feather name="message-circle" size={24} color="#9ca3af" />
-          <Text style={styles.navLabel}>Messages</Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity style={styles.navItem}>
-          <Feather name="user" size={24} color="#f59e0b" />
-          <Text style={[styles.navLabel, styles.navLabelActive]}>Profile</Text>
-        </TouchableOpacity>
-      </View>
     </SafeAreaView>
   );
 }
@@ -596,7 +580,7 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    padding: 16,
+    padding: 20,
     backgroundColor: "#fff",
     borderBottomWidth: 1,
     borderBottomColor: "#e5e7eb",
@@ -607,16 +591,16 @@ const styles = StyleSheet.create({
     color: "#111827",
   },
   logoutBtn: {
-    color: "#ef4444",
+    color: "#2563EB",
     fontSize: 14,
-    fontWeight: "500",
+    fontWeight: "600",
   },
   content: {
     flex: 1,
   },
   contentContainer: {
     padding: 16,
-    paddingBottom: 100,
+    paddingBottom: 20,
   },
   loadingContainer: {
     flex: 1,
@@ -630,12 +614,16 @@ const styles = StyleSheet.create({
   },
   profileSection: {
     alignItems: "center",
-    marginBottom: 20,
+    marginBottom: 16,
     backgroundColor: "#fff",
     borderRadius: 12,
     padding: 24,
     borderWidth: 1,
     borderColor: "#e5e7eb",
+    shadowColor: "#000",
+    shadowOpacity: 0.05,
+    shadowRadius: 3,
+    elevation: 2,
   },
   profilePicContainer: {
     position: "relative",
@@ -645,8 +633,8 @@ const styles = StyleSheet.create({
     width: 120,
     height: 120,
     borderRadius: 60,
-    borderWidth: 3,
-    borderColor: "#f59e0b",
+    borderWidth: 4,
+    borderColor: "#2563EB",
   },
   profilePicPlaceholder: {
     width: 120,
@@ -655,14 +643,14 @@ const styles = StyleSheet.create({
     backgroundColor: "#f3f4f6",
     justifyContent: "center",
     alignItems: "center",
-    borderWidth: 3,
+    borderWidth: 4,
     borderColor: "#e5e7eb",
   },
   editIconBadge: {
     position: "absolute",
     bottom: 0,
     right: 0,
-    backgroundColor: "#f59e0b",
+    backgroundColor: "#2563EB",
     width: 36,
     height: 36,
     borderRadius: 18,
@@ -684,21 +672,21 @@ const styles = StyleSheet.create({
   roleBadgeContainer: {
     flexDirection: "row",
     justifyContent: "center",
-    marginBottom: 20,
+    marginBottom: 16,
     gap: 12,
   },
   roleBadge: {
-    backgroundColor: "#fef3c7",
+    backgroundColor: "#EFF6FF",
     paddingHorizontal: 16,
     paddingVertical: 6,
     borderRadius: 16,
     borderWidth: 1,
-    borderColor: "#fbbf24",
+    borderColor: "#93C5FD",
   },
   roleBadgeText: {
     fontSize: 12,
     fontWeight: "600",
-    color: "#92400e",
+    color: "#1E40AF",
   },
   statusBadge: {
     backgroundColor: "#d1fae5",
@@ -720,6 +708,10 @@ const styles = StyleSheet.create({
     marginBottom: 16,
     borderWidth: 1,
     borderColor: "#e5e7eb",
+    shadowColor: "#000",
+    shadowOpacity: 0.05,
+    shadowRadius: 3,
+    elevation: 2,
   },
   cardHeader: {
     flexDirection: "row",
@@ -731,6 +723,7 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: "600",
     color: "#111827",
+    marginBottom: 12,
   },
   editButton: {
     flexDirection: "row",
@@ -740,7 +733,7 @@ const styles = StyleSheet.create({
   editButtonText: {
     fontSize: 14,
     fontWeight: "600",
-    color: "#f59e0b",
+    color: "#2563EB",
   },
   infoRow: {
     flexDirection: "row",
@@ -786,7 +779,7 @@ const styles = StyleSheet.create({
     gap: 12,
   },
   saveButton: {
-    backgroundColor: "#f59e0b",
+    backgroundColor: "#2563EB",
     padding: 14,
     borderRadius: 8,
     alignItems: "center",
@@ -865,41 +858,15 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     padding: 16,
-    backgroundColor: "#fef3c7",
+    backgroundColor: "#EFF6FF",
     borderRadius: 12,
     borderWidth: 1,
-    borderColor: "#f59e0b",
+    borderColor: "#2563EB",
     gap: 12,
   },
   imageOptionText: {
     fontSize: 15,
     fontWeight: "600",
-    color: "#f59e0b",
-  },
-  bottomNav: {
-    flexDirection: "row",
-    backgroundColor: "#fff",
-    borderTopWidth: 1,
-    borderTopColor: "#e5e7eb",
-    paddingVertical: 8,
-    paddingHorizontal: 16,
-    position: "absolute",
-    bottom: 0,
-    left: 0,
-    right: 0,
-  },
-  navItem: {
-    flex: 1,
-    alignItems: "center",
-    paddingVertical: 8,
-  },
-  navLabel: {
-    fontSize: 11,
-    color: "#9ca3af",
-    marginTop: 4,
-  },
-  navLabelActive: {
-    color: "#f59e0b",
-    fontWeight: "600",
+    color: "#2563EB",
   },
 });

@@ -226,7 +226,9 @@ export default function MenteeDashboard({ navigation }) {
               <View style={{ flex: 1 }}>
                 <Text style={styles.mentorName}>{mentorData.name}</Text>
                 <Text style={styles.mentorDept}>{mentorData.department}</Text>
-                <Text style={styles.mentorAvail}>Available for consultation</Text>
+                <Text style={styles.mentorAvail}>
+                  Available for consultation
+                </Text>
               </View>
               <TouchableOpacity style={styles.contactBtn}>
                 <Ionicons name="chatbubbles-outline" size={18} color="white" />
@@ -242,13 +244,15 @@ export default function MenteeDashboard({ navigation }) {
           <View style={styles.actionsGrid}>
             <TouchableOpacity
               style={styles.actionBtn}
-              onPress={() => navigation.navigate("SubmitForm")}
+              onPress={() => navigation.navigate("MenteeForms")}
             >
-              <Ionicons name="document-text-outline" size={24} color="#2563EB" />
+              <Ionicons
+                name="document-text-outline"
+                size={24}
+                color="#2563EB"
+              />
               <Text style={styles.actionText}>Submit Form</Text>
             </TouchableOpacity>
-
-           
 
             <TouchableOpacity
               style={styles.actionBtn}
@@ -258,7 +262,7 @@ export default function MenteeDashboard({ navigation }) {
               <Text style={styles.actionText}>View Progress</Text>
             </TouchableOpacity>
 
-              <TouchableOpacity
+            <TouchableOpacity
               style={styles.actionBtn}
               onPress={() => navigation.navigate("Attendance")}
             >
@@ -289,7 +293,7 @@ export default function MenteeDashboard({ navigation }) {
 
         <TouchableOpacity
           style={styles.navItem}
-          onPress={() => navigation.navigate("SubmitForm")}
+          onPress={() => navigation.navigate("MenteeForms")}
         >
           <Feather name="file-text" size={24} color="#9ca3af" />
           <Text style={styles.navLabel}>Forms</Text>

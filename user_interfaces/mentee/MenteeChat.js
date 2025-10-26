@@ -569,7 +569,7 @@ export default function MenteeChat({ navigation }) {
 
         <TouchableOpacity
           style={styles.navItem}
-          onPress={() => navigation.navigate("SubmitForm")}
+          onPress={() => navigation.navigate("MenteeForms")}
         >
           <Feather name="file-text" size={24} color="#9ca3af" />
           <Text style={styles.navLabel}>Forms</Text>

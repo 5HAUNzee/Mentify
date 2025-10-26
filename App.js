@@ -33,6 +33,16 @@ import MenteeProfile from "./user_interfaces/mentee/MenteeProfile";
 import MenteeDashboard from "./user_interfaces/mentee/MenteeDashboard";
 import MenteeChat from "./user_interfaces/mentee/MenteeChat";
 import AttendanceTracker from "./user_interfaces/mentee/Attendance";
+import SuperAdminDashboard from "./user_interfaces/super_admin/SuperDashboard";
+import MentorQueries from "./user_interfaces/mentor/MentorQueries";
+import MentorProgress from "./user_interfaces/mentor/MentorProgress";
+import MentorAnnouncements from "./user_interfaces/mentor/MentorAnnouncements";
+import MentorForms from "./user_interfaces/mentor/MentorForms";
+import MenteeForms from "./user_interfaces/mentee/MenteeForms";
+import MenteeFormScreen from "./user_interfaces/mentee/MenteeFormScreen";
+import SuperUsers from "./user_interfaces/super_admin/SuperUsers";
+import CollegeDetails from "./user_interfaces/super_admin/CollegeDetails";
+import SuperAdminTabs from "./user_interfaces/super_admin/SuperAdminTabs";
 
 const Stack = createNativeStackNavigator();
 const CLERK_PUBLISHABLE_KEY =
@@ -66,7 +76,6 @@ export default function App() {
 
               {/* Dashboards */}
 
-              <Stack.Screen name="SuperDashboard" component={SuperDashboard} />
               <Stack.Screen
                 name="CollegeDashboard"
                 component={CollegeDashboard}
@@ -85,6 +94,8 @@ export default function App() {
               <Stack.Screen name="MenteeProfile" component={MenteeProfile} />
               <Stack.Screen name="MenteeChat" component={MenteeChat} />
               <Stack.Screen name="Attendance" component={AttendanceTracker} />
+              <Stack.Screen name="MenteeForms" component={MenteeForms} />
+              <Stack.Screen name="MenteeFormScreen" component={MenteeFormScreen} />
               {/* Deptadmin screens */}
               <Stack.Screen name="Mentors" component={Mentors} />
               <Stack.Screen name="Announcements" component={Announcements} />
@@ -98,6 +109,22 @@ export default function App() {
               {/* Mentor screens */}
               <Stack.Screen name="MentorProfile" component={MentorProfile} />
               <Stack.Screen name="MyMentees" component={MyMentees} />
+              <Stack.Screen name="MentorQueries" component={MentorQueries} />
+              <Stack.Screen name="MentorProgress" component={MentorProgress} />
+              <Stack.Screen
+                name="MentorAnnouncements"
+                component={MentorAnnouncements}
+              />
+              <Stack.Screen name="MentorForms" component={MentorForms} />
+              {/* Superadmin Tabs */}
+              <Stack.Screen name="SuperAdminTabs" component={SuperAdminTabs} />
+              <Stack.Screen
+                name="SuperDashboard"
+                component={SuperAdminDashboard}
+              />
+
+              <Stack.Screen name="SuperUsers" component={SuperUsers} />
+              <Stack.Screen name="CollegeDetails" component={CollegeDetails} />
             </Stack.Navigator>
           </NavigationContainer>
         </ClerkProvider>
