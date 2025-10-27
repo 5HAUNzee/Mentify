@@ -5,12 +5,12 @@ import {
   StyleSheet,
   ScrollView,
   TouchableOpacity,
-  SafeAreaView,
   TextInput,
   Alert,
   Modal,
   Switch,
 } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 import { Feather } from "@expo/vector-icons";
 import {
   addDoc,
@@ -985,7 +985,7 @@ const styles = StyleSheet.create({
     borderTopColor: "#e5e7eb",
     paddingVertical: 8,
     paddingHorizontal: 16,
-    position: "absolute",
+    
     bottom: 0,
     left: 0,
     right: 0,

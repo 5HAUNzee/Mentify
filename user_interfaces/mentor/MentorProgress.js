@@ -1,3 +1,4 @@
+// screens/MentorProgress.js - IMPROVED UI WITH ORANGE THEME
 import React, { useEffect, useState } from "react";
 import {
   View,
@@ -5,11 +6,11 @@ import {
   StyleSheet,
   ScrollView,
   TouchableOpacity,
-  SafeAreaView,
   ActivityIndicator,
   RefreshControl,
   Alert,
 } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 import { Feather } from "@expo/vector-icons";
 import {
   collection,
@@ -20,10 +21,11 @@ import {
   getDoc,
 } from "firebase/firestore";
 import { db } from "../../firebase.config";
-import { useAuth } from "@clerk/clerk-expo";
+import { useAuth, useClerk } from "@clerk/clerk-expo";
 
 export default function MentorProgress({ navigation }) {
-  const { signOut, userId } = useAuth();
+  const { userId } = useAuth();
+  const { signOut } = useClerk();
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [mentees, setMentees] = useState([]);
@@ -42,7 +44,6 @@ export default function MentorProgress({ navigation }) {
     try {
       setLoading(true);
 
-      // Fetch assigned mentees
       const assignmentsRef = collection(db, "assignments");
       const assignmentsQuery = query(
         assignmentsRef,
@@ -58,19 +59,16 @@ export default function MentorProgress({ navigation }) {
       for (const assignmentDoc of assignmentsSnap.docs) {
         const menteeId = assignmentDoc.data().menteeId;
 
-        // Get user details
         const userDoc = await getDoc(doc(db, "users", menteeId));
         if (!userDoc.exists()) continue;
 
         const userData = userDoc.data();
 
-        // Get mentee academic details
         const menteeDetailsDoc = await getDoc(doc(db, "mentees", menteeId));
         if (!menteeDetailsDoc.exists()) continue;
 
         const menteeDetails = menteeDetailsDoc.data();
 
-        // Calculate CGPA
         const sgpaHistory = menteeDetails.sgpaHistory || [];
         let cgpa = 0;
         if (sgpaHistory.length > 0) {
@@ -78,7 +76,6 @@ export default function MentorProgress({ navigation }) {
           cgpa = total / sgpaHistory.length;
         }
 
-        // Fetch attendance data
         const subjectsRef = collection(db, "subjects");
         const subjectsQuery = query(
           subjectsRef,
@@ -93,7 +90,6 @@ export default function MentorProgress({ navigation }) {
         for (const subjectDoc of subjectsSnap.docs) {
           const subjectData = subjectDoc.data();
 
-          // Fetch attendance records
           const attendanceRef = collection(db, "attendance");
           const attendanceQuery = query(
             attendanceRef,
@@ -124,7 +120,6 @@ export default function MentorProgress({ navigation }) {
         const overallAttendance =
           totalClasses > 0 ? (totalAttended / totalClasses) * 100 : 100;
 
-        // Determine status
         const lowCGPA = cgpa > 0 && cgpa < 6.5;
         const lowAttendance = overallAttendance < 75;
         const atRisk = lowCGPA || lowAttendance;
@@ -147,7 +142,6 @@ export default function MentorProgress({ navigation }) {
         });
       }
 
-      // Sort: at-risk students first, then by CGPA
       menteesList.sort((a, b) => {
         if (a.atRisk && !b.atRisk) return -1;
         if (!a.atRisk && b.atRisk) return 1;
@@ -166,33 +160,46 @@ export default function MentorProgress({ navigation }) {
       Alert.alert("Error", "Failed to load mentees progress");
     } finally {
       setLoading(false);
+      setRefreshing(false);
     }
   };
 
-  const onRefresh = async () => {
+  const onRefresh = () => {
     setRefreshing(true);
-    await fetchMenteesProgress();
-    setRefreshing(false);
+    fetchMenteesProgress();
   };
 
   const handleSignOut = async () => {
-    try {
-      await signOut();
-      navigation.replace("Auth");
-    } catch (err) {
-      console.error("Sign out error:", err);
-    }
+    Alert.alert(
+      "Logout",
+      "Are you sure you want to log out?",
+      [
+        { text: "Cancel", style: "cancel" },
+        {
+          text: "Logout",
+          style: "destructive",
+          onPress: async () => {
+            try {
+              await signOut();
+              navigation.replace("Auth");
+            } catch (err) {
+              console.error("Sign out error:", err);
+            }
+          },
+        },
+      ]
+    );
   };
 
   const getCGPAColor = (cgpa) => {
-    if (cgpa >= 8) return "#10B981";
-    if (cgpa >= 6.5) return "#F59E0B";
+    if (cgpa >= 8) return "#10b981";
+    if (cgpa >= 6.5) return "#f59e0b";
     return "#ef4444";
   };
 
   const getAttendanceColor = (percentage) => {
-    if (percentage >= 85) return "#10B981";
-    if (percentage >= 75) return "#F59E0B";
+    if (percentage >= 85) return "#10b981";
+    if (percentage >= 75) return "#f59e0b";
     return "#ef4444";
   };
 
@@ -200,7 +207,7 @@ export default function MentorProgress({ navigation }) {
     return (
       <SafeAreaView style={styles.container}>
         <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color="#2563EB" />
+          <ActivityIndicator size="large" color="#f59e0b" />
           <Text style={styles.loadingText}>Loading progress data...</Text>
         </View>
       </SafeAreaView>
@@ -211,6 +218,9 @@ export default function MentorProgress({ navigation }) {
     <SafeAreaView style={styles.container}>
       {/* Header */}
       <View style={styles.header}>
+        <TouchableOpacity onPress={() => navigation.goBack()}>
+          <Feather name="arrow-left" size={24} color="#111827" />
+        </TouchableOpacity>
         <Text style={styles.headerTitle}>Mentees Progress</Text>
         <TouchableOpacity onPress={handleSignOut}>
           <Text style={styles.logoutBtn}>Logout</Text>
@@ -222,31 +232,21 @@ export default function MentorProgress({ navigation }) {
         contentContainerStyle={styles.contentContainer}
         showsVerticalScrollIndicator={false}
         refreshControl={
-          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
+          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={['#f59e0b']} />
         }
       >
         {/* Stats Cards */}
         <View style={styles.statsContainer}>
           <View style={styles.statCard}>
-            <View
-              style={[
-                styles.statIconContainer,
-                { backgroundColor: "#EFF6FF" },
-              ]}
-            >
-              <Feather name="users" size={20} color="#2563EB" />
+            <View style={[styles.statIconContainer, { backgroundColor: "#fef3c7" }]}>
+              <Feather name="users" size={20} color="#f59e0b" />
             </View>
             <Text style={styles.statValue}>{stats.total}</Text>
             <Text style={styles.statLabel}>Total Mentees</Text>
           </View>
 
           <View style={styles.statCard}>
-            <View
-              style={[
-                styles.statIconContainer,
-                { backgroundColor: "#FEE2E2" },
-              ]}
-            >
+            <View style={[styles.statIconContainer, { backgroundColor: "#fee2e2" }]}>
               <Feather name="alert-triangle" size={20} color="#ef4444" />
             </View>
             <Text style={[styles.statValue, { color: "#ef4444" }]}>
@@ -256,30 +256,20 @@ export default function MentorProgress({ navigation }) {
           </View>
 
           <View style={styles.statCard}>
-            <View
-              style={[
-                styles.statIconContainer,
-                { backgroundColor: "#FEF3C7" },
-              ]}
-            >
-              <Feather name="trending-down" size={20} color="#F59E0B" />
+            <View style={[styles.statIconContainer, { backgroundColor: "#fed7aa" }]}>
+              <Feather name="trending-down" size={20} color="#f97316" />
             </View>
-            <Text style={[styles.statValue, { color: "#F59E0B" }]}>
+            <Text style={[styles.statValue, { color: "#f97316" }]}>
               {stats.lowCGPA}
             </Text>
             <Text style={styles.statLabel}>Low CGPA</Text>
           </View>
 
           <View style={styles.statCard}>
-            <View
-              style={[
-                styles.statIconContainer,
-                { backgroundColor: "#FFEDD5" },
-              ]}
-            >
-              <Feather name="calendar" size={20} color="#F97316" />
+            <View style={[styles.statIconContainer, { backgroundColor: "#dbeafe" }]}>
+              <Feather name="calendar" size={20} color="#3b82f6" />
             </View>
-            <Text style={[styles.statValue, { color: "#F97316" }]}>
+            <Text style={[styles.statValue, { color: "#3b82f6" }]}>
               {stats.lowAttendance}
             </Text>
             <Text style={styles.statLabel}>Low Attendance</Text>
@@ -292,7 +282,9 @@ export default function MentorProgress({ navigation }) {
 
           {mentees.length === 0 ? (
             <View style={styles.emptyContainer}>
-              <Feather name="user-x" size={64} color="#9ca3af" />
+              <View style={styles.emptyIconCircle}>
+                <Feather name="user-x" size={40} color="#d1d5db" />
+              </View>
               <Text style={styles.emptyText}>No mentees assigned</Text>
               <Text style={styles.emptySubtext}>
                 You don't have any assigned mentees yet
@@ -310,7 +302,7 @@ export default function MentorProgress({ navigation }) {
                 {/* Mentee Header */}
                 <View style={styles.menteeHeader}>
                   <View style={styles.menteeAvatar}>
-                    <Feather name="user" size={20} color="#2563EB" />
+                    <Feather name="user" size={20} color="#f59e0b" />
                   </View>
                   <View style={styles.menteeHeaderInfo}>
                     <Text style={styles.menteeName}>{mentee.name}</Text>
@@ -396,47 +388,7 @@ export default function MentorProgress({ navigation }) {
                   </View>
                 )}
 
-                {/* Action Buttons */}
-                <View style={styles.actionButtons}>
-                  <TouchableOpacity
-                    style={styles.actionButton}
-                    onPress={() => {
-                      // Navigate to send message or announcement
-                      Alert.alert(
-                        "Contact Student",
-                        `Send a message to ${mentee.name}?`,
-                        [
-                          { text: "Cancel", style: "cancel" },
-                          {
-                            text: "Send Message",
-                            onPress: () => {
-                              // Navigate to announcements with pre-filled data
-                              navigation.navigate("MentorAnnouncements");
-                            },
-                          },
-                        ]
-                      );
-                    }}
-                  >
-                    <Feather name="message-circle" size={16} color="#2563EB" />
-                    <Text style={styles.actionButtonText}>Message</Text>
-                  </TouchableOpacity>
-
-                  <TouchableOpacity
-                    style={[styles.actionButton, styles.actionButtonPrimary]}
-                    onPress={() => {
-                      Alert.alert(
-                        "Student Details",
-                        `Name: ${mentee.name}\nRoll: ${mentee.rollNumber}\nSemester: ${mentee.currentSem}\nCGPA: ${mentee.cgpa.toFixed(2)}\nAttendance: ${mentee.overallAttendance.toFixed(1)}%`
-                      );
-                    }}
-                  >
-                    <Feather name="eye" size={16} color="#fff" />
-                    <Text style={styles.actionButtonTextPrimary}>
-                      View Details
-                    </Text>
-                  </TouchableOpacity>
-                </View>
+              
               </View>
             ))
           )}
@@ -448,11 +400,11 @@ export default function MentorProgress({ navigation }) {
             <Text style={styles.legendTitle}>Performance Indicators</Text>
             <View style={styles.legendItems}>
               <View style={styles.legendItem}>
-                <View style={[styles.legendDot, { backgroundColor: "#10B981" }]} />
+                <View style={[styles.legendDot, { backgroundColor: "#10b981" }]} />
                 <Text style={styles.legendText}>Good (CGPA ≥8, Attendance ≥85%)</Text>
               </View>
               <View style={styles.legendItem}>
-                <View style={[styles.legendDot, { backgroundColor: "#F59E0B" }]} />
+                <View style={[styles.legendDot, { backgroundColor: "#f59e0b" }]} />
                 <Text style={styles.legendText}>
                   Average (CGPA 6.5-8, Attendance 75-85%)
                 </Text>
@@ -467,6 +419,8 @@ export default function MentorProgress({ navigation }) {
           </View>
         )}
       </ScrollView>
+
+
     </SafeAreaView>
   );
 }
@@ -480,7 +434,7 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    padding: 20,
+    padding: 16,
     backgroundColor: "#fff",
     borderBottomWidth: 1,
     borderBottomColor: "#e5e7eb",
@@ -491,16 +445,16 @@ const styles = StyleSheet.create({
     color: "#111827",
   },
   logoutBtn: {
-    color: "#2563EB",
+    color: "#ef4444",
     fontSize: 14,
-    fontWeight: "600",
+    fontWeight: "500",
   },
   content: {
     flex: 1,
   },
   contentContainer: {
     padding: 16,
-    paddingBottom: 20,
+    paddingBottom: 100,
   },
   loadingContainer: {
     flex: 1,
@@ -516,26 +470,22 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     flexWrap: "wrap",
     gap: 12,
-    marginBottom: 24,
+    marginBottom: 20,
   },
   statCard: {
     flex: 1,
-    minWidth: "45%",
+    minWidth: "47%",
     backgroundColor: "#fff",
     borderRadius: 12,
     padding: 16,
     alignItems: "center",
     borderWidth: 1,
     borderColor: "#e5e7eb",
-    shadowColor: "#000",
-    shadowOpacity: 0.05,
-    shadowRadius: 3,
-    elevation: 2,
   },
   statIconContainer: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
+    width: 44,
+    height: 44,
+    borderRadius: 22,
     justifyContent: "center",
     alignItems: "center",
     marginBottom: 8,
@@ -547,7 +497,7 @@ const styles = StyleSheet.create({
     marginBottom: 4,
   },
   statLabel: {
-    fontSize: 12,
+    fontSize: 11,
     color: "#6b7280",
     textAlign: "center",
   },
@@ -563,21 +513,29 @@ const styles = StyleSheet.create({
   emptyContainer: {
     backgroundColor: "#fff",
     borderRadius: 12,
-    padding: 48,
+    padding: 40,
     alignItems: "center",
     borderWidth: 1,
     borderColor: "#e5e7eb",
   },
+  emptyIconCircle: {
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    backgroundColor: "#f3f4f6",
+    justifyContent: "center",
+    alignItems: "center",
+    marginBottom: 16,
+  },
   emptyText: {
     fontSize: 16,
     fontWeight: "600",
-    color: "#111827",
-    marginTop: 16,
+    color: "#6b7280",
+    marginBottom: 4,
   },
   emptySubtext: {
-    fontSize: 14,
-    color: "#6b7280",
-    marginTop: 4,
+    fontSize: 13,
+    color: "#9ca3af",
     textAlign: "center",
   },
   menteeCard: {
@@ -587,10 +545,6 @@ const styles = StyleSheet.create({
     marginBottom: 12,
     borderWidth: 1,
     borderColor: "#e5e7eb",
-    shadowColor: "#000",
-    shadowOpacity: 0.05,
-    shadowRadius: 3,
-    elevation: 2,
   },
   menteeCardAtRisk: {
     borderColor: "#fca5a5",
@@ -605,7 +559,7 @@ const styles = StyleSheet.create({
     width: 44,
     height: 44,
     borderRadius: 22,
-    backgroundColor: "#EFF6FF",
+    backgroundColor: "#fef3c7",
     justifyContent: "center",
     alignItems: "center",
     marginRight: 12,
@@ -627,14 +581,14 @@ const styles = StyleSheet.create({
     width: 32,
     height: 32,
     borderRadius: 16,
-    backgroundColor: "#FEE2E2",
+    backgroundColor: "#fee2e2",
     justifyContent: "center",
     alignItems: "center",
   },
   performanceSection: {
     flexDirection: "row",
     backgroundColor: "#f9fafb",
-    borderRadius: 8,
+    borderRadius: 10,
     padding: 12,
     marginBottom: 12,
   },
@@ -655,7 +609,7 @@ const styles = StyleSheet.create({
   warningBadge: {
     flexDirection: "row",
     alignItems: "center",
-    backgroundColor: "#FEE2E2",
+    backgroundColor: "#fee2e2",
     paddingHorizontal: 6,
     paddingVertical: 2,
     borderRadius: 8,
@@ -689,7 +643,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     paddingVertical: 8,
     borderBottomWidth: 1,
-    borderBottomColor: "#f3f4f6",
+    borderBottomColor: "#f9fafb",
   },
   subjectInfo: {
     flex: 1,
@@ -726,20 +680,20 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     padding: 12,
-    borderRadius: 8,
+    borderRadius: 10,
     borderWidth: 1,
-    borderColor: "#2563EB",
+    borderColor: "#f59e0b",
     backgroundColor: "#fff",
     gap: 6,
   },
   actionButtonText: {
     fontSize: 13,
     fontWeight: "600",
-    color: "#2563EB",
+    color: "#f59e0b",
   },
   actionButtonPrimary: {
-    backgroundColor: "#2563EB",
-    borderColor: "#2563EB",
+    backgroundColor: "#f59e0b",
+    borderColor: "#f59e0b",
   },
   actionButtonTextPrimary: {
     fontSize: 13,
@@ -776,5 +730,27 @@ const styles = StyleSheet.create({
   legendText: {
     fontSize: 12,
     color: "#6b7280",
+  },
+  bottomNav: {
+    flexDirection: "row",
+    backgroundColor: "#fff",
+    borderTopWidth: 1,
+    borderTopColor: "#e5e7eb",
+    paddingVertical: 8,
+    paddingHorizontal: 16,
+    position: "absolute",
+    bottom: 0,
+    left: 0,
+    right: 0,
+  },
+  navItem: {
+    flex: 1,
+    alignItems: "center",
+    paddingVertical: 8,
+  },
+  navLabel: {
+    fontSize: 11,
+    color: "#9ca3af",
+    marginTop: 4,
   },
 });

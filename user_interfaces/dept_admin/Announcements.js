@@ -5,7 +5,6 @@ import {
   StyleSheet,
   ScrollView,
   TouchableOpacity,
-  SafeAreaView,
   TextInput,
   Alert,
   ActivityIndicator,
@@ -13,6 +12,7 @@ import {
   Platform,
   Modal,
 } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 import { Feather } from "@expo/vector-icons";
 import {
   collection,
@@ -391,10 +391,10 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
     alignItems: "center",
     padding: 16,
-    backgroundColor: "#2563eb",
+    backgroundColor: "White",
   },
-  headerTitle: { color: "#fff", fontSize: 18, fontWeight: "bold" },
-  logoutBtn: { color: "#fff", fontWeight: "600" },
+  headerTitle: { color: "black", fontSize: 18, fontWeight: "bold" },
+  logoutBtn: { color: "red", fontWeight: "600" },
   keyboardView: { flex: 1 },
   content: { flex: 1, padding: 16 },
   contentContainer: { paddingBottom: 100 },
@@ -415,7 +415,7 @@ const styles = StyleSheet.create({
   input: { borderWidth: 1, borderColor: "#d1d5db", borderRadius: 8, padding: 10, fontSize: 14, color: "#111827" },
   inputSpacing: { marginTop: 8 },
   textArea: { height: 100 },
-  postButton: { flexDirection: "row", alignItems: "center", justifyContent: "center", backgroundColor: "#2563eb", borderRadius: 8, paddingVertical: 10, marginTop: 12 },
+  postButton: { flexDirection: "row", alignItems: "center", justifyContent: "center", backgroundColor: "#10b981", borderRadius: 8, paddingVertical: 10, marginTop: 12 },
   postButtonDisabled: { backgroundColor: "#93c5fd" },
   postButtonText: { color: "#fff", fontWeight: "600", marginLeft: 6 },
   announcementsSection: { marginTop: 12 },

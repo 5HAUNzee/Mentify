@@ -5,13 +5,13 @@ import {
   StyleSheet,
   ScrollView,
   TouchableOpacity,
-  SafeAreaView,
   TextInput,
   Alert,
   ActivityIndicator,
   Modal,
   RefreshControl,
 } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 import { Feather } from "@expo/vector-icons";
 import {
   collection,
@@ -615,7 +615,7 @@ const styles = StyleSheet.create({
     color: "#111827",
   },
   logoutBtn: {
-    color: "#2563EB",
+    color: "red",
     fontSize: 14,
     fontWeight: "600",
   },
@@ -977,7 +977,7 @@ const styles = StyleSheet.create({
     paddingVertical: 10,
     paddingHorizontal: 16,
     justifyContent: "space-around",
-    position: "absolute",
+   
     bottom: 0,
     left: 0,
     right: 0,

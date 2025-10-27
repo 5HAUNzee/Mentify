@@ -1,3 +1,4 @@
+// screens/MentorDashboard.js - FETCH MENTEE FROM USERS
 import React, { useEffect, useState } from "react";
 import {
   View,
@@ -5,10 +6,12 @@ import {
   StyleSheet,
   ScrollView,
   TouchableOpacity,
-  SafeAreaView,
   Image,
   ActivityIndicator,
+  RefreshControl,
+  Alert,
 } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 import { Feather } from "@expo/vector-icons";
 import {
   collection,
@@ -19,17 +22,18 @@ import {
   getDoc,
 } from "firebase/firestore";
 import { db } from "../../firebase.config";
-import { useAuth } from "@clerk/clerk-expo";
+import { useAuth, useClerk } from "@clerk/clerk-expo";
 
 export default function MentorDashboard({ navigation }) {
-  const { signOut, userId } = useAuth();
+  const { userId } = useAuth();
+  const { signOut } = useClerk();
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
   const [mentorData, setMentorData] = useState(null);
   const [stats, setStats] = useState({
     myMentees: 0,
-    pendingReviews: 0,
-    openQueries: 0,
-    avgResponse: "2.3h",
+    totalSubmissions: 0,
+    approvedSubmissions: 0,
   });
   const [assignedMentees, setAssignedMentees] = useState([]);
 
@@ -43,72 +47,118 @@ export default function MentorDashboard({ navigation }) {
 
       // Fetch mentor profile
       const mentorDoc = await getDoc(doc(db, "users", userId));
-      if (mentorDoc.exists()) {
-        setMentorData(mentorDoc.data());
+      if (!mentorDoc.exists()) {
+        Alert.alert("Error", "Mentor profile not found");
+        return;
       }
 
-      // Fetch assigned mentees
+      const mentorInfo = mentorDoc.data();
+      setMentorData(mentorInfo);
+
+      // Fetch assignments where this mentor is assigned
       const assignmentsQuery = query(
         collection(db, "assignments"),
         where("mentorId", "==", userId),
         where("status", "==", "active")
       );
-      const assignmentsSnap = await getDocs(assignmentsQuery);
-      const menteesData = assignmentsSnap.docs.map((doc) => ({
-        id: doc.id,
-        ...doc.data(),
-      }));
+      const assignmentsSnapshot = await getDocs(assignmentsQuery);
+
+      // Get mentee details from users collection based on assignments
+      const menteePromises = assignmentsSnapshot.docs.map(async (assignDoc) => {
+        const assignData = assignDoc.data();
+        
+        // Fetch from users collection using menteeId
+        const userDoc = await getDoc(doc(db, "users", assignData.menteeId));
+        
+        if (userDoc.exists()) {
+          const userData = userDoc.data();
+          
+          // Also fetch from mentees collection for additional data (SGPA, etc.)
+          let menteeData = {};
+          try {
+            const menteeDoc = await getDoc(doc(db, "mentees", assignData.menteeId));
+            if (menteeDoc.exists()) {
+              menteeData = menteeDoc.data();
+            }
+          } catch (err) {
+            console.log("No mentees document found for:", assignData.menteeId);
+          }
+          
+          return {
+            id: userDoc.id,
+            assignmentId: assignDoc.id,
+            // User data (primary)
+            firstName: userData.firstName,
+            lastName: userData.lastName,
+            email: userData.email,
+            profilePic: userData.profilePic,
+            department: userData.department,
+            // Mentee-specific data (if available)
+            rollNumber: menteeData.rollNumber || userData.rollNumber,
+            currentSem: menteeData.currentSem || userData.currentSem,
+            sgpaHistory: menteeData.sgpaHistory,
+            menteeName: assignData.menteeName || `${userData.firstName} ${userData.lastName}`,
+          };
+        }
+        return null;
+      });
+
+      const menteesData = (await Promise.all(menteePromises)).filter(m => m !== null);
       setAssignedMentees(menteesData);
 
-      // Fetch pending form reviews
-      const reviewsQuery = query(
-        collection(db, "formSubmissions"),
-        where("mentorId", "==", userId),
-        where("status", "==", "submitted")
+      // Fetch submissions for this mentor
+      const submissionsQuery = query(
+        collection(db, "submissions"),
+        where("mentorId", "==", userId)
       );
-      const reviewsSnap = await getDocs(reviewsQuery);
-
-      // Fetch open queries
-      const queriesQuery = query(
-        collection(db, "queries"),
-        where("mentorId", "==", userId),
-        where("status", "==", "open")
-      );
-      const queriesSnap = await getDocs(queriesQuery);
+      const submissionsSnapshot = await getDocs(submissionsQuery);
+      
+      const totalSubmissions = submissionsSnapshot.size;
+      const approvedSubmissions = submissionsSnapshot.docs.filter(
+        doc => doc.data().status === "approved"
+      ).length;
 
       setStats({
         myMentees: menteesData.length,
-        pendingReviews: reviewsSnap.size,
-        openQueries: queriesSnap.size,
-        avgResponse: "2.3h",
+        totalSubmissions: totalSubmissions,
+        approvedSubmissions: approvedSubmissions,
       });
+
+      setLoading(false);
+      setRefreshing(false);
     } catch (err) {
       console.error("Error fetching mentor data:", err);
-    } finally {
+      Alert.alert("Error", "Failed to load dashboard data");
       setLoading(false);
+      setRefreshing(false);
     }
+  };
+
+  const onRefresh = () => {
+    setRefreshing(true);
+    fetchMentorData();
   };
 
   const handleSignOut = async () => {
-    try {
-      await signOut();
-      navigation.replace("Auth");
-    } catch (err) {
-      console.error("Sign out error:", err);
-    }
-  };
-
-  const getStatusColor = (status) => {
-    switch (status?.toLowerCase()) {
-      case "up":
-        return { bg: "#d1fae5", text: "#065f46" };
-      case "stable":
-        return { bg: "#fef3c7", text: "#92400e" };
-      case "down":
-        return { bg: "#fee2e2", text: "#991b1b" };
-      default:
-        return { bg: "#f3f4f6", text: "#6b7280" };
-    }
+    Alert.alert(
+      "Logout",
+      "Are you sure you want to log out?",
+      [
+        { text: "Cancel", style: "cancel" },
+        {
+          text: "Logout",
+          style: "destructive",
+          onPress: async () => {
+            try {
+              await signOut();
+              navigation.replace("Auth");
+            } catch (err) {
+              console.error("Sign out error:", err);
+            }
+          },
+        },
+      ]
+    );
   };
 
   if (loading) {
@@ -116,6 +166,7 @@ export default function MentorDashboard({ navigation }) {
       <SafeAreaView style={styles.container}>
         <View style={styles.loadingContainer}>
           <ActivityIndicator size="large" color="#f59e0b" />
+          <Text style={styles.loadingText}>Loading dashboard...</Text>
         </View>
       </SafeAreaView>
     );
@@ -135,6 +186,9 @@ export default function MentorDashboard({ navigation }) {
         style={styles.content}
         showsVerticalScrollIndicator={false}
         contentContainerStyle={styles.contentContainer}
+        refreshControl={
+          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={['#f59e0b']} />
+        }
       >
         {/* Mentor Profile Card */}
         <View style={styles.profileCard}>
@@ -153,7 +207,7 @@ export default function MentorDashboard({ navigation }) {
               {mentorData?.firstName} {mentorData?.lastName}
             </Text>
             <Text style={styles.profileRole}>
-              Mentor : {mentorData?.department}
+              Mentor • {mentorData?.department}
             </Text>
             <Text style={styles.profileCollege}>{mentorData?.college}</Text>
           </View>
@@ -169,20 +223,14 @@ export default function MentorDashboard({ navigation }) {
 
           <View style={styles.statCard}>
             <Feather name="file-text" size={24} color="#3b82f6" />
-            <Text style={styles.statNumber}>{stats.pendingReviews}</Text>
-            <Text style={styles.statLabel}>Pending Reviews</Text>
+            <Text style={styles.statNumber}>{stats.totalSubmissions}</Text>
+            <Text style={styles.statLabel}>Submissions</Text>
           </View>
 
           <View style={styles.statCard}>
-            <Feather name="message-circle" size={24} color="#10b981" />
-            <Text style={styles.statNumber}>{stats.openQueries}</Text>
-            <Text style={styles.statLabel}>Open Queries</Text>
-          </View>
-
-          <View style={styles.statCard}>
-            <Feather name="clock" size={24} color="#8b5cf6" />
-            <Text style={styles.statNumber}>{stats.avgResponse}</Text>
-            <Text style={styles.statLabel}>Avg Response</Text>
+            <Feather name="check-circle" size={24} color="#10b981" />
+            <Text style={styles.statNumber}>{stats.approvedSubmissions}</Text>
+            <Text style={styles.statLabel}>Approved</Text>
           </View>
         </View>
 
@@ -196,54 +244,51 @@ export default function MentorDashboard({ navigation }) {
               <Text style={styles.emptyText}>No mentees assigned yet</Text>
             </View>
           ) : (
-            assignedMentees.map((mentee) => {
-              const statusStyle = getStatusColor(mentee.performanceStatus);
-              return (
-                <TouchableOpacity
-                  key={mentee.id}
-                  style={styles.menteeCard}
-                  onPress={() =>
-                    navigation.navigate("MenteeDetails", {
-                      menteeId: mentee.menteeId,
-                    })
-                  }
-                >
-                  <View style={styles.menteeAvatar}>
-                    <Feather name="user" size={24} color="#6b7280" />
-                  </View>
-                  <View style={styles.menteeInfo}>
-                    <Text style={styles.menteeName}>{mentee.menteeName}</Text>
+            assignedMentees.map((mentee) => (
+              <TouchableOpacity
+                key={mentee.id}
+                style={styles.menteeCard}
+                onPress={() =>
+                  navigation.navigate("MenteeDetails", {
+                    menteeId: mentee.id,
+                  })
+                }
+              >
+                <View style={styles.menteeAvatar}>
+                  {mentee.profilePic ? (
+                    <Image
+                      source={{ uri: mentee.profilePic }}
+                      style={styles.menteeAvatarImage}
+                    />
+                  ) : (
+                    <Text style={styles.menteeAvatarText}>
+                      {mentee.firstName?.[0]}{mentee.lastName?.[0]}
+                    </Text>
+                  )}
+                </View>
+                <View style={styles.menteeInfo}>
+                  <Text style={styles.menteeName}>
+                    {mentee.firstName} {mentee.lastName}
+                  </Text>
+                  <Text style={styles.menteeEmail}>{mentee.email}</Text>
+                  {mentee.rollNumber && (
                     <Text style={styles.menteeId}>
-                      {mentee.menteeRegNo || "CS2024001"}
+                      Roll: {mentee.rollNumber}
                     </Text>
+                  )}
+                  {mentee.sgpaHistory && mentee.sgpaHistory[0] && (
                     <Text style={styles.menteeGPA}>
-                      CGPA: {mentee.cgpa || "3.8"}
+                      SGPA: {mentee.sgpaHistory[0].sgpa} • Sem {mentee.currentSem || 1}
                     </Text>
-                  </View>
-                  <View style={styles.menteeStatus}>
-                    <View
-                      style={[
-                        styles.statusBadge,
-                        { backgroundColor: statusStyle.bg },
-                      ]}
-                    >
-                      <Text
-                        style={[styles.statusText, { color: statusStyle.text }]}
-                      >
-                        {mentee.performanceStatus || "up"}
-                      </Text>
-                    </View>
-                    <Text style={styles.lastContact}>
-                      Last contact: {mentee.lastContact || "2 days ago"}
-                    </Text>
-                  </View>
-                </TouchableOpacity>
-              );
-            })
+                  )}
+                </View>
+                <Feather name="chevron-right" size={20} color="#9ca3af" />
+              </TouchableOpacity>
+            ))
           )}
         </View>
 
-        {/* Quick Actions */}
+                {/* Quick Actions */}
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Quick Actions</Text>
 
@@ -256,10 +301,10 @@ export default function MentorDashboard({ navigation }) {
                 <Feather name="file-text" size={28} color="#3b82f6" />
               </View>
               <Text style={styles.actionLabel}>Review Forms</Text>
-              {stats.pendingReviews > 0 && (
+              {stats.totalSubmissions > 0 && (
                 <View style={styles.actionBadge}>
                   <Text style={styles.actionBadgeText}>
-                    {stats.pendingReviews}
+                    {stats.totalSubmissions}
                   </Text>
                 </View>
               )}
@@ -267,29 +312,12 @@ export default function MentorDashboard({ navigation }) {
 
             <TouchableOpacity
               style={styles.actionCard}
-              onPress={() => navigation.navigate("MentorQueries")}
+              onPress={() => navigation.navigate("MyMentees")}
             >
               <View style={styles.actionIconContainer}>
-                <Feather name="message-circle" size={28} color="#10b981" />
+                <Feather name="users" size={28} color="#10b981" />
               </View>
-              <Text style={styles.actionLabel}>Answer Queries</Text>
-              {stats.openQueries > 0 && (
-                <View style={styles.actionBadge}>
-                  <Text style={styles.actionBadgeText}>
-                    {stats.openQueries}
-                  </Text>
-                </View>
-              )}
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              style={styles.actionCard}
-              onPress={() => navigation.navigate("MentorProgress")}
-            >
-              <View style={styles.actionIconContainer}>
-                <Feather name="users" size={28} color="#8b5cf6" />
-              </View>
-              <Text style={styles.actionLabel}>Mentee Progress</Text>
+              <Text style={styles.actionLabel}>View Mentees</Text>
             </TouchableOpacity>
 
             <TouchableOpacity
@@ -297,9 +325,39 @@ export default function MentorDashboard({ navigation }) {
               onPress={() => navigation.navigate("MentorAnnouncements")}
             >
               <View style={styles.actionIconContainer}>
-                <Feather name="send" size={28} color="#f59e0b" />
+                <Feather name="volume-2" size={28} color="#f59e0b" />
               </View>
-              <Text style={styles.actionLabel}>Send Message</Text>
+              <Text style={styles.actionLabel}>Post Announcement</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={styles.actionCard}
+              onPress={() => navigation.navigate("MentorQueries")}
+            >
+              <View style={styles.actionIconContainer}>
+                <Feather name="message-square" size={28} color="#8b5cf6" />
+              </View>
+              <Text style={styles.actionLabel}>Answer Queries</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={styles.actionCard}
+              onPress={() => navigation.navigate("MentorProgress")}
+            >
+              <View style={styles.actionIconContainer}>
+                <Feather name="trending-up" size={28} color="#06b6d4" />
+              </View>
+              <Text style={styles.actionLabel}>Progress Reports</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={styles.actionCard}
+              onPress={() => navigation.navigate("MentorProfile")}
+            >
+              <View style={styles.actionIconContainer}>
+                <Feather name="settings" size={28} color="#64748b" />
+              </View>
+              <Text style={styles.actionLabel}>My Profile</Text>
             </TouchableOpacity>
           </View>
         </View>
@@ -324,10 +382,10 @@ export default function MentorDashboard({ navigation }) {
 
         <TouchableOpacity
           style={styles.navItem}
-          onPress={() => navigation.navigate("Messages")}
+          onPress={() => navigation.navigate("MentorForms")}
         >
-          <Feather name="message-circle" size={24} color="#9ca3af" />
-          <Text style={styles.navLabel}>Messages</Text>
+          <Feather name="file-text" size={24} color="#9ca3af" />
+          <Text style={styles.navLabel}>Forms</Text>
         </TouchableOpacity>
 
         <TouchableOpacity
@@ -377,6 +435,11 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: "center",
     alignItems: "center",
+  },
+  loadingText: {
+    marginTop: 12,
+    fontSize: 14,
+    color: "#6b7280",
   },
   profileCard: {
     backgroundColor: "#fef3c7",
@@ -431,7 +494,7 @@ const styles = StyleSheet.create({
     backgroundColor: "#fff",
     borderRadius: 12,
     padding: 16,
-    width: "48%",
+    width: "31%",
     marginBottom: 12,
     borderWidth: 1,
     borderColor: "#e5e7eb",
@@ -444,7 +507,7 @@ const styles = StyleSheet.create({
     marginVertical: 8,
   },
   statLabel: {
-    fontSize: 12,
+    fontSize: 11,
     color: "#6b7280",
     textAlign: "center",
   },
@@ -475,6 +538,7 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     padding: 12,
     flexDirection: "row",
+    alignItems: "center",
     marginBottom: 12,
     borderWidth: 1,
     borderColor: "#e5e7eb",
@@ -483,10 +547,21 @@ const styles = StyleSheet.create({
     width: 48,
     height: 48,
     borderRadius: 24,
-    backgroundColor: "#f3f4f6",
+    backgroundColor: "#dbeafe",
     justifyContent: "center",
     alignItems: "center",
     marginRight: 12,
+    overflow: "hidden",
+  },
+  menteeAvatarImage: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+  },
+  menteeAvatarText: {
+    fontSize: 16,
+    fontWeight: "600",
+    color: "#2563eb",
   },
   menteeInfo: {
     flex: 1,
@@ -497,31 +572,20 @@ const styles = StyleSheet.create({
     color: "#111827",
     marginBottom: 2,
   },
+  menteeEmail: {
+    fontSize: 11,
+    color: "#9ca3af",
+    marginBottom: 2,
+  },
   menteeId: {
     fontSize: 12,
     color: "#6b7280",
-    marginBottom: 2,
+    marginBottom: 1,
   },
   menteeGPA: {
     fontSize: 12,
-    color: "#6b7280",
-  },
-  menteeStatus: {
-    alignItems: "flex-end",
-  },
-  statusBadge: {
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: 12,
-    marginBottom: 4,
-  },
-  statusText: {
-    fontSize: 11,
-    fontWeight: "600",
-  },
-  lastContact: {
-    fontSize: 10,
-    color: "#9ca3af",
+    color: "#10b981",
+    fontWeight: "500",
   },
   quickActionsGrid: {
     flexDirection: "row",
@@ -577,7 +641,6 @@ const styles = StyleSheet.create({
     borderTopColor: "#e5e7eb",
     paddingVertical: 8,
     paddingHorizontal: 16,
-    position: "absolute",
     bottom: 0,
     left: 0,
     right: 0,

@@ -30,7 +30,7 @@
           "data": [
             {
               "scheme": "mentify",
-              "host": "*"
+              "host": "oauth-callback"
             }
           ],
           "category": [

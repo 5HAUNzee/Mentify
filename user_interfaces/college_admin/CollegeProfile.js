@@ -5,13 +5,13 @@ import {
   StyleSheet,
   ScrollView,
   TouchableOpacity,
-  SafeAreaView,
   TextInput,
   Alert,
   ActivityIndicator,
   Image,
   Modal,
 } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 import { Feather } from "@expo/vector-icons";
 import * as ImagePicker from "expo-image-picker";
 import { doc, getDoc, updateDoc } from "firebase/firestore";
@@ -544,7 +544,7 @@ const styles = StyleSheet.create({
     justifyContent: "space-around",
     paddingVertical: 12,
     backgroundColor: "#fff",
-    elevation: 4,
+    
   },
   navItem: { alignItems: "center" },
   navLabel: { color: "#9ca3af", fontSize: 12 },

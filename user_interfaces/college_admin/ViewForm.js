@@ -5,9 +5,9 @@ import {
   StyleSheet,
   ScrollView,
   TouchableOpacity,
-  SafeAreaView,
   ActivityIndicator,
 } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 import { Feather } from "@expo/vector-icons";
 import { doc, getDoc } from "firebase/firestore";
 import { db } from "../../firebase.config";
@@ -519,7 +519,7 @@ const styles = StyleSheet.create({
     borderTopColor: "#e5e7eb",
     paddingVertical: 8,
     paddingHorizontal: 16,
-    position: "absolute",
+    
     bottom: 0,
     left: 0,
     right: 0,

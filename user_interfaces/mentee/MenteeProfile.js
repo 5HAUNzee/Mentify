@@ -5,13 +5,13 @@ import {
   StyleSheet,
   ScrollView,
   TouchableOpacity,
-  SafeAreaView,
   TextInput,
   Alert,
   ActivityIndicator,
   Image,
   Modal,
 } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 import { Feather } from "@expo/vector-icons";
 import * as ImagePicker from "expo-image-picker";
 import {
@@ -1011,7 +1011,7 @@ export default function MenteeProfile({ navigation }) {
 
         <TouchableOpacity
           style={styles.navItem}
-          onPress={() => navigation.navigate("SubmitForm")}
+          onPress={() => navigation.navigate("MenteeForms")}
         >
           <Feather name="file-text" size={24} color="#9ca3af" />
           <Text style={styles.navLabel}>Forms</Text>
@@ -1034,6 +1034,9 @@ export default function MenteeProfile({ navigation }) {
   );
 }
 
+// Only replacing the green colors (#10b981) with blue (#3b82f6)
+// All other code remains exactly the same
+
 const styles = StyleSheet.create({
   container: {
     flex: 1,
@@ -1054,7 +1057,7 @@ const styles = StyleSheet.create({
     color: "#111827",
   },
   logoutBtn: {
-    color: "#ef4444",
+    color: "red",
     fontSize: 14,
     fontWeight: "500",
   },
@@ -1114,7 +1117,7 @@ const styles = StyleSheet.create({
     height: 120,
     borderRadius: 60,
     borderWidth: 3,
-    borderColor: "#10b981",
+    borderColor: "#3b82f6", // Changed from #10b981
   },
   profilePicPlaceholder: {
     width: 120,
@@ -1130,7 +1133,7 @@ const styles = StyleSheet.create({
     position: "absolute",
     bottom: 0,
     right: 0,
-    backgroundColor: "#10b981",
+    backgroundColor: "#3b82f6", // Changed from #10b981
     width: 36,
     height: 36,
     borderRadius: 18,
@@ -1167,7 +1170,7 @@ const styles = StyleSheet.create({
   academicValue: {
     fontSize: 24,
     fontWeight: "700",
-    color: "#10b981",
+    color: "#3b82f6", // Changed from #10b981
     marginBottom: 4,
   },
   academicLabel: {
@@ -1208,7 +1211,7 @@ const styles = StyleSheet.create({
   editButtonText: {
     fontSize: 14,
     fontWeight: "600",
-    color: "#10b981",
+    color: "#3b82f6", // Changed from #10b981
   },
   infoRow: {
     flexDirection: "row",
@@ -1265,7 +1268,7 @@ const styles = StyleSheet.create({
     gap: 12,
   },
   saveButton: {
-    backgroundColor: "#10b981",
+    backgroundColor: "#3b82f6", // Changed from #10b981
     padding: 14,
     borderRadius: 8,
     alignItems: "center",
@@ -1295,13 +1298,13 @@ const styles = StyleSheet.create({
     marginTop: 8,
   },
   sgpaItem: {
-    backgroundColor: "#f0fdf4",
+    backgroundColor: "#eff6ff", // Changed from #f0fdf4
     borderRadius: 8,
     padding: 12,
     minWidth: 80,
     alignItems: "center",
     borderWidth: 1,
-    borderColor: "#d1fae5",
+    borderColor: "#bfdbfe", // Changed from #d1fae5
   },
   sgpaSem: {
     fontSize: 12,
@@ -1311,7 +1314,7 @@ const styles = StyleSheet.create({
   sgpaValue: {
     fontSize: 18,
     fontWeight: "700",
-    color: "#10b981",
+    color: "#3b82f6", // Changed from #10b981
   },
   signatureLabel: {
     fontSize: 14,
@@ -1375,16 +1378,16 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     padding: 16,
-    backgroundColor: "#f0fdf4",
+    backgroundColor: "#eff6ff", // Changed from #f0fdf4
     borderRadius: 12,
     borderWidth: 1,
-    borderColor: "#10b981",
+    borderColor: "#3b82f6", // Changed from #10b981
     gap: 12,
   },
   imageOptionText: {
     fontSize: 15,
     fontWeight: "600",
-    color: "#10b981",
+    color: "#3b82f6", // Changed from #10b981
   },
   bottomNav: {
     flexDirection: "row",
@@ -1393,7 +1396,6 @@ const styles = StyleSheet.create({
     borderTopColor: "#e5e7eb",
     paddingVertical: 10,
     paddingHorizontal: 16,
-    position: "absolute",
     bottom: 0,
     left: 0,
     right: 0,

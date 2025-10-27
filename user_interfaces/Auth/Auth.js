@@ -1,3 +1,4 @@
+// screens/Auth.js - ENHANCED CARD UI
 import React, { useEffect } from "react";
 import {
   View,
@@ -7,20 +8,21 @@ import {
   Platform,
   StyleSheet,
   Dimensions,
+  StatusBar,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+import { LinearGradient } from "expo-linear-gradient";
 import * as WebBrowser from "expo-web-browser";
 import * as Linking from "expo-linking";
 import { useOAuth, useUser } from "@clerk/clerk-expo";
 import { doc, getDoc, setDoc } from "firebase/firestore";
 import { db } from "../../firebase.config";
-import { Ionicons } from "@expo/vector-icons";
+import { Ionicons, Feather } from "@expo/vector-icons";
 
 const { width, height } = Dimensions.get("window");
 
 WebBrowser.maybeCompleteAuthSession();
 
-// Warm up browser for Android Google Sign-In
 export const useWarmUpBrowser = () => {
   useEffect(() => {
     if (Platform.OS !== "android") return;
@@ -34,7 +36,6 @@ const Auth = ({ navigation }) => {
   const { user, isSignedIn } = useUser();
   useWarmUpBrowser();
 
-  // Run after login
   useEffect(() => {
     const checkUser = async () => {
       if (isSignedIn && user) {
@@ -52,7 +53,7 @@ const Auth = ({ navigation }) => {
                 navigation.replace("MenteeDashboard");
                 break;
               case "superadmin":
-                navigation.replace("SuperAdminTabs");
+                navigation.replace("SuperAdminDashboard");
                 break;
               case "collegeadmin":
                 navigation.replace("CollegeDashboard");
@@ -89,7 +90,6 @@ const Auth = ({ navigation }) => {
 
   const handleSignInWithGoogle = async () => {
     try {
-      // Create redirect URL with custom scheme
       const redirectUrl = Linking.createURL("oauth-callback", {
         scheme: "mentify",
       });
@@ -117,51 +117,87 @@ const Auth = ({ navigation }) => {
 
   return (
     <SafeAreaView style={styles.container}>
-      {/* Main Content */}
-      <View style={styles.content}>
-        {/* Logo Section */}
-        <View style={styles.logoSection}>
-          <View style={styles.logoContainer}>
-            <Ionicons name="school" size={48} color="#1a73e8" />
-          </View>
-          <Text style={styles.title}>Mentify</Text>
-          <Text style={styles.subtitle}>Academic Portal</Text>
-        </View>
+      <StatusBar barStyle="light-content" />
 
-        {/* Sign In Card */}
-        <View style={styles.signInCard}>
-          <Text style={styles.signInTitle}>Sign in</Text>
-          <Text style={styles.signInSubtitle}>to continue to Mentify</Text>
-
-          {/* Google Sign In Button */}
-          <TouchableOpacity
-            style={styles.googleButton}
-            onPress={handleSignInWithGoogle}
-          >
-            <View style={styles.googleButtonContent}>
-              <View style={styles.googleIconContainer}>
-                <Ionicons name="logo-google" size={20} color="#4285F4" />
-              </View>
-              <Text style={styles.googleButtonText}>Continue with Google</Text>
+      <LinearGradient
+        colors={["#1e40af", "#3b82f6", "#60a5fa"]}
+        style={styles.gradient}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 1 }}
+      >
+        <View style={styles.content}>
+          {/* Logo Section */}
+          <View style={styles.logoSection}>
+            <View style={styles.logoContainer}>
+              <Ionicons name="school" size={48} color="#fff" />
             </View>
-          </TouchableOpacity>
+            <Text style={styles.title}>Mentify</Text>
+            <Text style={styles.subtitle}>Academic Mentorship Portal</Text>
+          </View>
 
-          {/* Domain Notice */}
-          <View style={styles.domainNotice}>
-            <Ionicons name="information-circle" size={16} color="#5f6368" />
-            <Text style={styles.domainText}>
-              Use your <Text style={styles.domainHighlight}>@gec.ac.in</Text>{" "}
-              email
-            </Text>
+          {/* Sign In Card - Enhanced */}
+          <View style={styles.cardWrapper}>
+            <View style={styles.cardGlow} />
+            <View style={styles.signInCard}>
+              {/* Card Top Accent */}
+              <View style={styles.cardTopAccent} />
+
+              <View style={styles.cardContent}>
+                <View style={styles.welcomeHeader}>
+                  <View style={styles.iconBadge}>
+                    <Feather name="lock" size={18} color="#3b82f6" />
+                  </View>
+                  <Text style={styles.signInTitle}>Welcome</Text>
+                  <Text style={styles.signInSubtitle}>
+                    Sign in to your account
+                  </Text>
+                </View>
+
+                {/* Google Sign In Button */}
+                <TouchableOpacity
+                  style={styles.googleButton}
+                  onPress={handleSignInWithGoogle}
+                  activeOpacity={0.85}
+                >
+                  <LinearGradient
+                    colors={["#ffffff", "#f8fafc"]}
+                    style={styles.googleButtonGradient}
+                  >
+                    <View style={styles.googleIconCircle}>
+                      <Ionicons name="logo-google" size={20} color="#4285F4" />
+                    </View>
+                    <Text style={styles.googleButtonText}>
+                      Continue with Google
+                    </Text>
+                    <Feather name="arrow-right" size={18} color="#3b82f6" />
+                  </LinearGradient>
+                </TouchableOpacity>
+
+                {/* Divider */}
+                <View style={styles.divider}>
+                  <View style={styles.dividerLine} />
+                  <Text style={styles.dividerText}>Secure Login</Text>
+                  <View style={styles.dividerLine} />
+                </View>
+
+                {/* Domain Notice */}
+                <View style={styles.domainNotice}>
+                  <Feather name="shield" size={14} color="#3b82f6" />
+                  <Text style={styles.domainText}>
+                    Use <Text style={styles.domainHighlight}>@gec.ac.in</Text> email
+                  </Text>
+                </View>
+              </View>
+            </View>
+          </View>
+
+          {/* Footer */}
+          <View style={styles.footer}>
+            <Text style={styles.footerText}>Goa College of Engineering</Text>
+            <Text style={styles.footerSubtext}>Mentorship Program • 2025</Text>
           </View>
         </View>
-
-        {/* Footer */}
-        <View style={styles.footer}>
-          <Text style={styles.footerText}>Goa College of Engineering</Text>
-          <Text style={styles.footerSubtext}>Mentorship Program</Text>
-        </View>
-      </View>
+      </LinearGradient>
     </SafeAreaView>
   );
 };
@@ -169,132 +205,189 @@ const Auth = ({ navigation }) => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#ffffff",
+  },
+  gradient: {
+    flex: 1,
   },
   content: {
     flex: 1,
     justifyContent: "space-between",
     paddingHorizontal: 24,
-    paddingVertical: 40,
+    paddingVertical: 50,
   },
   logoSection: {
     alignItems: "center",
-    marginTop: height * 0.1,
+    marginTop: height * 0.06,
   },
   logoContainer: {
-    width: 80,
-    height: 80,
-    borderRadius: 40,
-    backgroundColor: "#f8f9fa",
+    width: 85,
+    height: 85,
+    borderRadius: 42,
+    backgroundColor: "rgba(255,255,255,0.2)",
     justifyContent: "center",
     alignItems: "center",
-    marginBottom: 16,
-    borderWidth: 1,
-    borderColor: "#e8eaed",
+    marginBottom: 18,
+    borderWidth: 2,
+    borderColor: "rgba(255,255,255,0.3)",
   },
   title: {
-    fontSize: 32,
-    fontWeight: "400",
-    color: "#202124",
-    marginBottom: 8,
+    fontSize: 38,
+    fontWeight: "700",
+    color: "#fff",
+    marginBottom: 6,
     letterSpacing: -0.5,
   },
   subtitle: {
-    fontSize: 16,
-    color: "#5f6368",
-    fontWeight: "400",
+    fontSize: 14,
+    color: "#dbeafe",
+    fontWeight: "500",
+  },
+  cardWrapper: {
+    position: "relative",
+  },
+  cardGlow: {
+    position: "absolute",
+    top: -10,
+    left: -10,
+    right: -10,
+    bottom: -10,
+    backgroundColor: "#fff",
+    opacity: 0.1,
+    borderRadius: 28,
+    shadowColor: "#fff",
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.3,
+    shadowRadius: 20,
   },
   signInCard: {
     backgroundColor: "white",
-    borderRadius: 8,
-    padding: 40,
-    borderWidth: 1,
-    borderColor: "#dadce0",
-    maxWidth: 400,
-    width: "100%",
-    alignSelf: "center",
+    borderRadius: 24,
+    overflow: "hidden",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 12 },
+    shadowOpacity: 0.2,
+    shadowRadius: 20,
+    elevation: 10,
+  },
+  cardTopAccent: {
+    height: 4,
+    backgroundColor: "#3b82f6",
+  },
+  cardContent: {
+    padding: 32,
+  },
+  welcomeHeader: {
+    alignItems: "center",
+    marginBottom: 28,
+  },
+  iconBadge: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: "#eff6ff",
+    justifyContent: "center",
+    alignItems: "center",
+    marginBottom: 16,
   },
   signInTitle: {
-    fontSize: 24,
-    fontWeight: "400",
-    color: "#202124",
-    textAlign: "center",
-    marginBottom: 8,
+    fontSize: 28,
+    fontWeight: "700",
+    color: "#111827",
+    marginBottom: 6,
   },
   signInSubtitle: {
-    fontSize: 16,
-    color: "#5f6368",
-    textAlign: "center",
-    marginBottom: 40,
+    fontSize: 14,
+    color: "#6b7280",
   },
   googleButton: {
-    backgroundColor: "white",
-    borderWidth: 1,
-    borderColor: "#dadce0",
-    borderRadius: 4,
-    paddingVertical: 12,
-    marginBottom: 24,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.05,
-    shadowRadius: 2,
-    elevation: 1,
+    borderRadius: 12,
+    overflow: "hidden",
+    shadowColor: "#3b82f6",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.15,
+    shadowRadius: 8,
+    elevation: 4,
   },
-  googleButtonContent: {
+  googleButtonGradient: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
-    position: "relative",
+    paddingVertical: 16,
+    borderWidth: 1.5,
+    borderColor: "#e2e8f0",
+    borderRadius: 12,
   },
-  googleIconContainer: {
-    position: "absolute",
-    left: 16,
-    width: 20,
-    height: 20,
+  googleIconCircle: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: "#fff",
     justifyContent: "center",
     alignItems: "center",
+    marginRight: 12,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.1,
+    shadowRadius: 3,
+    elevation: 2,
   },
   googleButtonText: {
-    color: "#3c4043",
-    fontSize: 14,
-    fontWeight: "500",
-    fontFamily: "Roboto, sans-serif",
+    color: "#1e293b",
+    fontSize: 16,
+    fontWeight: "600",
+    marginRight: 8,
+  },
+  divider: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginVertical: 24,
+  },
+  dividerLine: {
+    flex: 1,
+    height: 1,
+    backgroundColor: "#e5e7eb",
+  },
+  dividerText: {
+    paddingHorizontal: 16,
+    fontSize: 11,
+    color: "#9ca3af",
+    fontWeight: "600",
+    letterSpacing: 0.5,
   },
   domainNotice: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
-    backgroundColor: "#f8f9fa",
-    paddingVertical: 12,
-    paddingHorizontal: 16,
-    borderRadius: 6,
+    backgroundColor: "#eff6ff",
+    paddingVertical: 14,
+    paddingHorizontal: 20,
+    borderRadius: 12,
+    gap: 10,
     borderWidth: 1,
-    borderColor: "#e8eaed",
+    borderColor: "#dbeafe",
   },
   domainText: {
-    color: "#5f6368",
+    color: "#1e40af",
     fontSize: 13,
-    marginLeft: 8,
-    fontWeight: "400",
+    fontWeight: "500",
   },
   domainHighlight: {
-    fontWeight: "500",
-    color: "#1a73e8",
+    fontWeight: "700",
+    color: "#3b82f6",
   },
   footer: {
     alignItems: "center",
-    paddingBottom: 20,
   },
   footerText: {
-    color: "#5f6368",
+    color: "#fff",
     fontSize: 14,
-    fontWeight: "400",
+    fontWeight: "600",
     marginBottom: 4,
   },
   footerSubtext: {
-    color: "#80868b",
+    color: "#bfdbfe",
     fontSize: 12,
-    fontWeight: "400",
+    fontWeight: "500",
   },
 });
 

@@ -1,3 +1,4 @@
+// screens/MentorQueries.js - IMPROVED UI WITH ORANGE THEME
 import React, { useEffect, useState } from "react";
 import {
   View,
@@ -5,13 +6,13 @@ import {
   StyleSheet,
   ScrollView,
   TouchableOpacity,
-  SafeAreaView,
   TextInput,
   Alert,
   ActivityIndicator,
   Modal,
   RefreshControl,
 } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 import { Feather } from "@expo/vector-icons";
 import {
   collection,
@@ -25,10 +26,11 @@ import {
   Timestamp,
 } from "firebase/firestore";
 import { db } from "../../firebase.config";
-import { useAuth } from "@clerk/clerk-expo";
+import { useAuth, useClerk } from "@clerk/clerk-expo";
 
 export default function MentorQueries({ navigation }) {
-  const { signOut, userId } = useAuth();
+  const { userId } = useAuth();
+  const { signOut } = useClerk();
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [sending, setSending] = useState(false);
@@ -40,7 +42,6 @@ export default function MentorQueries({ navigation }) {
     studies: 0,
   });
 
-  // Modal states
   const [replyModalVisible, setReplyModalVisible] = useState(false);
   const [selectedDoubt, setSelectedDoubt] = useState(null);
   const [replyText, setReplyText] = useState("");
@@ -69,7 +70,6 @@ export default function MentorQueries({ navigation }) {
           ...doubtDoc.data(),
         };
 
-        // Fetch mentee details
         const menteeDocRef = doc(db, "users", doubtData.menteeId);
         const menteeSnap = await getDoc(menteeDocRef);
 
@@ -79,7 +79,6 @@ export default function MentorQueries({ navigation }) {
             menteeData.lastName || ""
           }`.trim();
 
-          // Get roll number from mentees collection
           const menteeDetailsRef = doc(db, "mentees", doubtData.menteeId);
           const menteeDetailsSnap = await getDoc(menteeDetailsRef);
           if (menteeDetailsSnap.exists()) {
@@ -92,7 +91,6 @@ export default function MentorQueries({ navigation }) {
 
       setDoubts(doubtsList);
 
-      // Calculate stats
       const pending = doubtsList.filter((d) => d.status === "pending").length;
       const replied = doubtsList.filter((d) => d.status === "replied").length;
       const mentorship = doubtsList.filter((d) => d.type === "mentorship").length;
@@ -104,22 +102,35 @@ export default function MentorQueries({ navigation }) {
       Alert.alert("Error", "Failed to load queries");
     } finally {
       setLoading(false);
+      setRefreshing(false);
     }
   };
 
-  const onRefresh = async () => {
+  const onRefresh = () => {
     setRefreshing(true);
-    await fetchQueries();
-    setRefreshing(false);
+    fetchQueries();
   };
 
   const handleSignOut = async () => {
-    try {
-      await signOut();
-      navigation.replace("Auth");
-    } catch (err) {
-      console.error("Sign out error:", err);
-    }
+    Alert.alert(
+      "Logout",
+      "Are you sure you want to log out?",
+      [
+        { text: "Cancel", style: "cancel" },
+        {
+          text: "Logout",
+          style: "destructive",
+          onPress: async () => {
+            try {
+              await signOut();
+              navigation.replace("Auth");
+            } catch (err) {
+              console.error("Sign out error:", err);
+            }
+          },
+        },
+      ]
+    );
   };
 
   const openReplyModal = (doubt) => {
@@ -168,21 +179,22 @@ export default function MentorQueries({ navigation }) {
     return date.toLocaleDateString("en-US", {
       month: "short",
       day: "numeric",
-      year: "numeric",
       hour: "2-digit",
       minute: "2-digit",
     });
   };
 
   const getStatusColor = (status) => {
-    return status === "pending" ? "#F59E0B" : "#10B981";
+    return status === "pending" 
+      ? { bg: "#fef3c7", text: "#92400e" } 
+      : { bg: "#d1fae5", text: "#065f46" };
   };
 
   if (loading) {
     return (
       <SafeAreaView style={styles.container}>
         <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color="#2563EB" />
+          <ActivityIndicator size="large" color="#f59e0b" />
           <Text style={styles.loadingText}>Loading queries...</Text>
         </View>
       </SafeAreaView>
@@ -193,6 +205,9 @@ export default function MentorQueries({ navigation }) {
     <SafeAreaView style={styles.container}>
       {/* Header */}
       <View style={styles.header}>
+        <TouchableOpacity onPress={() => navigation.goBack()}>
+          <Feather name="arrow-left" size={24} color="#111827" />
+        </TouchableOpacity>
         <Text style={styles.headerTitle}>Student Queries</Text>
         <TouchableOpacity onPress={handleSignOut}>
           <Text style={styles.logoutBtn}>Logout</Text>
@@ -204,38 +219,38 @@ export default function MentorQueries({ navigation }) {
         contentContainerStyle={styles.contentContainer}
         showsVerticalScrollIndicator={false}
         refreshControl={
-          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
+          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={['#f59e0b']} />
         }
       >
         {/* Stats Cards */}
         <View style={styles.statsContainer}>
           <View style={styles.statCard}>
-            <View style={styles.statIconContainer} >
-              <Feather name="clock" size={20} color="#F59E0B" />
+            <View style={[styles.statIconContainer, { backgroundColor: "#fef3c7" }]}>
+              <Feather name="clock" size={20} color="#f59e0b" />
             </View>
             <Text style={styles.statValue}>{stats.pending}</Text>
             <Text style={styles.statLabel}>Pending</Text>
           </View>
 
           <View style={styles.statCard}>
-            <View style={[styles.statIconContainer, { backgroundColor: "#D1FAE5" }]}>
-              <Feather name="check-circle" size={20} color="#10B981" />
+            <View style={[styles.statIconContainer, { backgroundColor: "#d1fae5" }]}>
+              <Feather name="check-circle" size={20} color="#10b981" />
             </View>
             <Text style={styles.statValue}>{stats.replied}</Text>
             <Text style={styles.statLabel}>Replied</Text>
           </View>
 
           <View style={styles.statCard}>
-            <View style={[styles.statIconContainer, { backgroundColor: "#EFF6FF" }]}>
-              <Feather name="file-text" size={20} color="#2563EB" />
+            <View style={[styles.statIconContainer, { backgroundColor: "#e0e7ff" }]}>
+              <Feather name="file-text" size={20} color="#6366f1" />
             </View>
             <Text style={styles.statValue}>{stats.mentorship}</Text>
             <Text style={styles.statLabel}>Mentorship</Text>
           </View>
 
           <View style={styles.statCard}>
-            <View style={[styles.statIconContainer, { backgroundColor: "#F5F3FF" }]}>
-              <Feather name="book-open" size={20} color="#9333EA" />
+            <View style={[styles.statIconContainer, { backgroundColor: "#dbeafe" }]}>
+              <Feather name="book-open" size={20} color="#3b82f6" />
             </View>
             <Text style={styles.statValue}>{stats.studies}</Text>
             <Text style={styles.statLabel}>Study Doubts</Text>
@@ -243,114 +258,119 @@ export default function MentorQueries({ navigation }) {
         </View>
 
         {/* Queries List */}
-        <View style={styles.queriesSection}>
+        <View style={styles.section}>
           <Text style={styles.sectionTitle}>All Queries</Text>
 
           {doubts.length === 0 ? (
             <View style={styles.emptyContainer}>
-              <Feather name="inbox" size={64} color="#9ca3af" />
+              <View style={styles.emptyIconCircle}>
+                <Feather name="message-circle" size={40} color="#d1d5db" />
+              </View>
               <Text style={styles.emptyText}>No queries yet</Text>
               <Text style={styles.emptySubtext}>
                 Your mentees haven't asked any questions
               </Text>
             </View>
           ) : (
-            doubts.map((doubt) => (
-              <View key={doubt.id} style={styles.queryCard}>
-                <View style={styles.queryHeader}>
-                  <View style={styles.menteeInfo}>
-                    <View style={styles.menteeAvatar}>
-                      <Feather name="user" size={16} color="#2563EB" />
+            doubts.map((doubt) => {
+              const statusColors = getStatusColor(doubt.status);
+              return (
+                <View key={doubt.id} style={styles.queryCard}>
+                  <View style={styles.queryHeader}>
+                    <View style={styles.menteeInfo}>
+                      <View style={styles.menteeAvatar}>
+                        <Feather name="user" size={16} color="#f59e0b" />
+                      </View>
+                      <View>
+                        <Text style={styles.menteeName}>{doubt.menteeName}</Text>
+                        <Text style={styles.menteeRoll}>{doubt.rollNumber}</Text>
+                      </View>
                     </View>
-                    <View>
-                      <Text style={styles.menteeName}>{doubt.menteeName}</Text>
-                      <Text style={styles.menteeRoll}>{doubt.rollNumber}</Text>
+                    <View
+                      style={[
+                        styles.statusBadge,
+                        { backgroundColor: statusColors.bg },
+                      ]}
+                    >
+                      <Text style={[styles.statusText, { color: statusColors.text }]}>
+                        {doubt.status === "pending" ? "Pending" : "Replied"}
+                      </Text>
                     </View>
                   </View>
-                  <View
-                    style={[
-                      styles.statusBadge,
-                      { backgroundColor: getStatusColor(doubt.status) },
-                    ]}
-                  >
-                    <Text style={styles.statusText}>
-                      {doubt.status === "pending" ? "Pending" : "Replied"}
-                    </Text>
-                  </View>
-                </View>
 
-                <View style={styles.queryContent}>
-                  <View
+                  <View style={styles.queryContent}>
+                    <View
+                      style={[
+                        styles.typeBadge,
+                        doubt.type === "mentorship"
+                          ? styles.typeBadgePurple
+                          : styles.typeBadgeBlue,
+                      ]}
+                    >
+                      <Feather
+                        name={
+                          doubt.type === "mentorship" ? "file-text" : "book-open"
+                        }
+                        size={12}
+                        color={doubt.type === "mentorship" ? "#6366f1" : "#3b82f6"}
+                      />
+                      <Text
+                        style={[
+                          styles.typeText,
+                          doubt.type === "mentorship"
+                            ? styles.typeTextPurple
+                            : styles.typeTextBlue,
+                        ]}
+                      >
+                        {doubt.type === "mentorship"
+                          ? "Mentorship Form"
+                          : "Study Doubt"}
+                      </Text>
+                    </View>
+
+                    <Text style={styles.querySubject}>{doubt.subject}</Text>
+                    <Text style={styles.queryQuestion} numberOfLines={3}>
+                      {doubt.question}
+                    </Text>
+                    <Text style={styles.queryDate}>
+                      Asked on {formatDate(doubt.createdAt)}
+                    </Text>
+
+                    {doubt.reply && (
+                      <View style={styles.replyPreview}>
+                        <Feather name="corner-down-right" size={14} color="#f59e0b" />
+                        <Text style={styles.replyPreviewText} numberOfLines={2}>
+                          {doubt.reply}
+                        </Text>
+                      </View>
+                    )}
+                  </View>
+
+                  <TouchableOpacity
                     style={[
-                      styles.typeBadge,
-                      doubt.type === "mentorship"
-                        ? styles.typeBadgeBlue
-                        : styles.typeBadgeGreen,
+                      styles.replyButton,
+                      doubt.status === "replied" && styles.replyButtonSecondary,
                     ]}
+                    onPress={() => openReplyModal(doubt)}
                   >
                     <Feather
-                      name={
-                        doubt.type === "mentorship" ? "file-text" : "book-open"
-                      }
-                      size={12}
-                      color={doubt.type === "mentorship" ? "#2563EB" : "#10B981"}
+                      name={doubt.status === "pending" ? "send" : "edit-2"}
+                      size={16}
+                      color={doubt.status === "pending" ? "#fff" : "#f59e0b"}
                     />
                     <Text
                       style={[
-                        styles.typeText,
-                        doubt.type === "mentorship"
-                          ? styles.typeTextBlue
-                          : styles.typeTextGreen,
+                        styles.replyButtonText,
+                        doubt.status === "replied" &&
+                          styles.replyButtonTextSecondary,
                       ]}
                     >
-                      {doubt.type === "mentorship"
-                        ? "Mentorship Form"
-                        : "Study Doubt"}
+                      {doubt.status === "pending" ? "Reply" : "Edit Reply"}
                     </Text>
-                  </View>
-
-                  <Text style={styles.querySubject}>{doubt.subject}</Text>
-                  <Text style={styles.queryQuestion} numberOfLines={3}>
-                    {doubt.question}
-                  </Text>
-                  <Text style={styles.queryDate}>
-                    Asked on {formatDate(doubt.createdAt)}
-                  </Text>
-
-                  {doubt.reply && (
-                    <View style={styles.replyPreview}>
-                      <Feather name="corner-down-right" size={14} color="#2563EB" />
-                      <Text style={styles.replyPreviewText} numberOfLines={2}>
-                        {doubt.reply}
-                      </Text>
-                    </View>
-                  )}
+                  </TouchableOpacity>
                 </View>
-
-                <TouchableOpacity
-                  style={[
-                    styles.replyButton,
-                    doubt.status === "replied" && styles.replyButtonSecondary,
-                  ]}
-                  onPress={() => openReplyModal(doubt)}
-                >
-                  <Feather
-                    name={doubt.status === "pending" ? "send" : "edit-2"}
-                    size={16}
-                    color={doubt.status === "pending" ? "#fff" : "#2563EB"}
-                  />
-                  <Text
-                    style={[
-                      styles.replyButtonText,
-                      doubt.status === "replied" &&
-                        styles.replyButtonTextSecondary,
-                    ]}
-                  >
-                    {doubt.status === "pending" ? "Reply" : "Edit Reply"}
-                  </Text>
-                </TouchableOpacity>
-              </View>
-            ))
+              );
+            })
           )}
         </View>
       </ScrollView>
@@ -405,38 +425,30 @@ export default function MentorQueries({ navigation }) {
                     />
                   </View>
 
-                  <View style={styles.modalActions}>
-                    <TouchableOpacity
-                      style={styles.submitButton}
-                      onPress={submitReply}
-                      disabled={sending}
-                    >
-                      {sending ? (
-                        <ActivityIndicator size="small" color="#fff" />
-                      ) : (
-                        <>
-                          <Feather name="send" size={16} color="#fff" />
-                          <Text style={styles.submitButtonText}>
-                            Send Reply
-                          </Text>
-                        </>
-                      )}
-                    </TouchableOpacity>
-
-                    <TouchableOpacity
-                      style={styles.cancelButton}
-                      onPress={() => setReplyModalVisible(false)}
-                      disabled={sending}
-                    >
-                      <Text style={styles.cancelButtonText}>Cancel</Text>
-                    </TouchableOpacity>
-                  </View>
+                  <TouchableOpacity
+                    style={styles.submitButton}
+                    onPress={submitReply}
+                    disabled={sending}
+                  >
+                    {sending ? (
+                      <ActivityIndicator size="small" color="#fff" />
+                    ) : (
+                      <>
+                        <Feather name="send" size={18} color="#fff" />
+                        <Text style={styles.submitButtonText}>
+                          Send Reply
+                        </Text>
+                      </>
+                    )}
+                  </TouchableOpacity>
                 </>
               )}
             </ScrollView>
           </View>
         </View>
       </Modal>
+
+     
     </SafeAreaView>
   );
 }
@@ -450,7 +462,7 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    padding: 20,
+    padding: 16,
     backgroundColor: "#fff",
     borderBottomWidth: 1,
     borderBottomColor: "#e5e7eb",
@@ -461,16 +473,16 @@ const styles = StyleSheet.create({
     color: "#111827",
   },
   logoutBtn: {
-    color: "#2563EB",
+    color: "#ef4444",
     fontSize: 14,
-    fontWeight: "600",
+    fontWeight: "500",
   },
   content: {
     flex: 1,
   },
   contentContainer: {
     padding: 16,
-    paddingBottom: 20,
+    paddingBottom: 100,
   },
   loadingContainer: {
     flex: 1,
@@ -486,26 +498,22 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     flexWrap: "wrap",
     gap: 12,
-    marginBottom: 24,
+    marginBottom: 20,
   },
   statCard: {
     flex: 1,
-    minWidth: "45%",
+    minWidth: "47%",
     backgroundColor: "#fff",
     borderRadius: 12,
     padding: 16,
     alignItems: "center",
     borderWidth: 1,
     borderColor: "#e5e7eb",
-    shadowColor: "#000",
-    shadowOpacity: 0.05,
-    shadowRadius: 3,
-    elevation: 2,
   },
   statIconContainer: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
+    width: 44,
+    height: 44,
+    borderRadius: 22,
     justifyContent: "center",
     alignItems: "center",
     marginBottom: 8,
@@ -517,12 +525,12 @@ const styles = StyleSheet.create({
     marginBottom: 4,
   },
   statLabel: {
-    fontSize: 12,
+    fontSize: 11,
     color: "#6b7280",
     textAlign: "center",
   },
-  queriesSection: {
-    marginTop: 8,
+  section: {
+    marginBottom: 20,
   },
   sectionTitle: {
     fontSize: 16,
@@ -533,21 +541,29 @@ const styles = StyleSheet.create({
   emptyContainer: {
     backgroundColor: "#fff",
     borderRadius: 12,
-    padding: 48,
+    padding: 40,
     alignItems: "center",
     borderWidth: 1,
     borderColor: "#e5e7eb",
   },
+  emptyIconCircle: {
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    backgroundColor: "#f3f4f6",
+    justifyContent: "center",
+    alignItems: "center",
+    marginBottom: 16,
+  },
   emptyText: {
     fontSize: 16,
     fontWeight: "600",
-    color: "#111827",
-    marginTop: 16,
+    color: "#6b7280",
+    marginBottom: 4,
   },
   emptySubtext: {
-    fontSize: 14,
-    color: "#6b7280",
-    marginTop: 4,
+    fontSize: 13,
+    color: "#9ca3af",
     textAlign: "center",
   },
   queryCard: {
@@ -557,10 +573,6 @@ const styles = StyleSheet.create({
     marginBottom: 12,
     borderWidth: 1,
     borderColor: "#e5e7eb",
-    shadowColor: "#000",
-    shadowOpacity: 0.05,
-    shadowRadius: 3,
-    elevation: 2,
   },
   queryHeader: {
     flexDirection: "row",
@@ -577,7 +589,7 @@ const styles = StyleSheet.create({
     width: 36,
     height: 36,
     borderRadius: 18,
-    backgroundColor: "#EFF6FF",
+    backgroundColor: "#fef3c7",
     justifyContent: "center",
     alignItems: "center",
   },
@@ -592,13 +604,12 @@ const styles = StyleSheet.create({
   },
   statusBadge: {
     paddingHorizontal: 10,
-    paddingVertical: 4,
+    paddingVertical: 5,
     borderRadius: 12,
   },
   statusText: {
     fontSize: 11,
     fontWeight: "600",
-    color: "#fff",
   },
   queryContent: {
     marginBottom: 12,
@@ -608,26 +619,26 @@ const styles = StyleSheet.create({
     alignItems: "center",
     alignSelf: "flex-start",
     paddingHorizontal: 10,
-    paddingVertical: 4,
+    paddingVertical: 5,
     borderRadius: 12,
     gap: 4,
     marginBottom: 8,
   },
-  typeBadgeBlue: {
-    backgroundColor: "#EFF6FF",
+  typeBadgePurple: {
+    backgroundColor: "#e0e7ff",
   },
-  typeBadgeGreen: {
-    backgroundColor: "#ECFDF5",
+  typeBadgeBlue: {
+    backgroundColor: "#dbeafe",
   },
   typeText: {
     fontSize: 11,
     fontWeight: "600",
   },
-  typeTextBlue: {
-    color: "#2563EB",
+  typeTextPurple: {
+    color: "#6366f1",
   },
-  typeTextGreen: {
-    color: "#10B981",
+  typeTextBlue: {
+    color: "#3b82f6",
   },
   querySubject: {
     fontSize: 15,
@@ -642,12 +653,12 @@ const styles = StyleSheet.create({
     marginBottom: 8,
   },
   queryDate: {
-    fontSize: 12,
+    fontSize: 11,
     color: "#9ca3af",
   },
   replyPreview: {
     flexDirection: "row",
-    backgroundColor: "#EFF6FF",
+    backgroundColor: "#fef3c7",
     padding: 10,
     borderRadius: 8,
     marginTop: 8,
@@ -656,22 +667,22 @@ const styles = StyleSheet.create({
   replyPreviewText: {
     flex: 1,
     fontSize: 13,
-    color: "#1e40af",
+    color: "#92400e",
     lineHeight: 18,
   },
   replyButton: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
-    backgroundColor: "#2563EB",
+    backgroundColor: "#f59e0b",
     padding: 12,
-    borderRadius: 8,
+    borderRadius: 10,
     gap: 6,
   },
   replyButtonSecondary: {
-    backgroundColor: "#EFF6FF",
+    backgroundColor: "#fef3c7",
     borderWidth: 1,
-    borderColor: "#2563EB",
+    borderColor: "#f59e0b",
   },
   replyButtonText: {
     fontSize: 14,
@@ -679,7 +690,7 @@ const styles = StyleSheet.create({
     color: "#fff",
   },
   replyButtonTextSecondary: {
-    color: "#2563EB",
+    color: "#f59e0b",
   },
   modalOverlay: {
     flex: 1,
@@ -696,7 +707,7 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    padding: 16,
+    padding: 20,
     borderBottomWidth: 1,
     borderBottomColor: "#e5e7eb",
   },
@@ -706,18 +717,18 @@ const styles = StyleSheet.create({
     color: "#111827",
   },
   modalBody: {
-    padding: 16,
+    padding: 20,
   },
   queryPreview: {
-    backgroundColor: "#f9fafb",
-    borderRadius: 8,
+    backgroundColor: "#fef3c7",
+    borderRadius: 10,
     padding: 12,
     marginBottom: 16,
   },
   queryPreviewLabel: {
     fontSize: 12,
     fontWeight: "600",
-    color: "#6b7280",
+    color: "#92400e",
     marginTop: 8,
     marginBottom: 4,
   },
@@ -731,7 +742,7 @@ const styles = StyleSheet.create({
     lineHeight: 20,
   },
   inputGroup: {
-    marginBottom: 16,
+    marginBottom: 20,
   },
   inputLabel: {
     fontSize: 14,
@@ -741,27 +752,24 @@ const styles = StyleSheet.create({
   },
   input: {
     borderWidth: 1,
-    borderColor: "#d1d5db",
-    borderRadius: 8,
+    borderColor: "#e5e7eb",
+    borderRadius: 10,
     padding: 12,
     fontSize: 14,
     color: "#111827",
-    backgroundColor: "#fff",
+    backgroundColor: "#f9fafb",
   },
   textArea: {
     minHeight: 150,
     textAlignVertical: "top",
   },
-  modalActions: {
-    gap: 12,
-  },
   submitButton: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
-    backgroundColor: "#2563EB",
-    padding: 14,
-    borderRadius: 8,
+    backgroundColor: "#f59e0b",
+    padding: 16,
+    borderRadius: 12,
     gap: 8,
   },
   submitButtonText: {
@@ -769,17 +777,26 @@ const styles = StyleSheet.create({
     fontSize: 15,
     fontWeight: "600",
   },
-  cancelButton: {
+  bottomNav: {
+    flexDirection: "row",
     backgroundColor: "#fff",
-    padding: 14,
-    borderRadius: 8,
-    alignItems: "center",
-    borderWidth: 1,
-    borderColor: "#d1d5db",
+    borderTopWidth: 1,
+    borderTopColor: "#e5e7eb",
+    paddingVertical: 8,
+    paddingHorizontal: 16,
+    position: "absolute",
+    bottom: 0,
+    left: 0,
+    right: 0,
   },
-  cancelButtonText: {
-    color: "#374151",
-    fontSize: 15,
-    fontWeight: "600",
+  navItem: {
+    flex: 1,
+    alignItems: "center",
+    paddingVertical: 8,
+  },
+  navLabel: {
+    fontSize: 11,
+    color: "#9ca3af",
+    marginTop: 4,
   },
 });
