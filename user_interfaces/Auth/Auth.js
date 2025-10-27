@@ -7,9 +7,10 @@ import {
   Platform,
   StyleSheet,
   Dimensions,
-  SafeAreaView,
 } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 import * as WebBrowser from "expo-web-browser";
+import * as Linking from "expo-linking";
 import { useOAuth, useUser } from "@clerk/clerk-expo";
 import { doc, getDoc, setDoc } from "firebase/firestore";
 import { db } from "../../firebase.config";
@@ -51,7 +52,7 @@ const Auth = ({ navigation }) => {
                 navigation.replace("MenteeDashboard");
                 break;
               case "superadmin":
-                navigation.replace("SuperDashboard");
+                navigation.replace("SuperAdminTabs");
                 break;
               case "collegeadmin":
                 navigation.replace("CollegeDashboard");
@@ -88,13 +89,29 @@ const Auth = ({ navigation }) => {
 
   const handleSignInWithGoogle = async () => {
     try {
-      const { createdSessionId, setActive } = await startOAuthFlow();
+      // Create redirect URL with custom scheme
+      const redirectUrl = Linking.createURL("oauth-callback", {
+        scheme: "mentify",
+      });
+
+      console.log("OAuth redirect URL:", redirectUrl);
+
+      const { createdSessionId, setActive } = await startOAuthFlow({
+        redirectUrl: redirectUrl,
+      });
+
       if (createdSessionId) {
         await setActive({ session: createdSessionId });
+        console.log("Session created successfully:", createdSessionId);
+      } else {
+        Alert.alert("Login Failed", "Could not create session.");
       }
     } catch (err) {
       console.error("OAuth error:", err);
-      Alert.alert("Login Error", "Something went wrong during sign-in.");
+      Alert.alert(
+        "Login Error",
+        err.message || "Something went wrong during sign-in."
+      );
     }
   };
 
