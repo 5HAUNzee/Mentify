@@ -228,7 +228,7 @@ export default function MenteeDashboard({ navigation }) {
                   Available for consultation
                 </Text>
               </View>
-              <TouchableOpacity style={styles.contactBtn}>
+              <TouchableOpacity style={styles.contactBtn} onPress={() => navigation.navigate("MenteeChat")}>
                 <Ionicons name="chatbubbles-outline" size={18} color="white" />
                 <Text style={styles.contactText}>Contact</Text>
               </TouchableOpacity>
@@ -350,7 +350,7 @@ const styles = StyleSheet.create({
     paddingVertical: 8,
     paddingHorizontal: 15,
     borderRadius: 8,
-   
+
   },
   logoutButtonText: {
     color: "#ef4444",

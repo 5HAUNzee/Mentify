@@ -9,6 +9,7 @@ import {
   StyleSheet,
   Dimensions,
   StatusBar,
+  Image,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { LinearGradient } from "expo-linear-gradient";
@@ -129,7 +130,11 @@ const Auth = ({ navigation }) => {
           {/* Logo Section */}
           <View style={styles.logoSection}>
             <View style={styles.logoContainer}>
-              <Ionicons name="school" size={48} color="#fff" />
+              <Image
+                source={require("../../assets/icon.png")}
+                style={styles.logoImage}
+                resizeMode="contain"
+              />
             </View>
             <Text style={styles.title}>Mentify</Text>
             <Text style={styles.subtitle}>Academic Mentorship Portal</Text>
@@ -220,15 +225,20 @@ const styles = StyleSheet.create({
     marginTop: height * 0.06,
   },
   logoContainer: {
-    width: 85,
-    height: 85,
-    borderRadius: 42,
-    backgroundColor: "rgba(255,255,255,0.2)",
+    width: 120,        // control visible size of the 768px part
+    height: 120,
+    borderRadius: 40,
+    borderColor: "#3b82f6",
+    borderWidth: 2,
+    backgroundColor: "#1E3A8A",
     justifyContent: "center",
     alignItems: "center",
-    marginBottom: 18,
-    borderWidth: 2,
-    borderColor: "rgba(255,255,255,0.3)",
+    overflow: "hidden", // ensures cropped edges
+  },
+  logoImage: {
+    width: 160,   // slightly larger than container to "zoom in" past edges
+    height: 160,
+    borderRadius: 80,
   },
   title: {
     fontSize: 38,
