@@ -9,16 +9,21 @@ import {
     Alert,
     ScrollView,
     Dimensions,
+
+    StatusBar
 } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { collection, getDocs, deleteDoc, doc } from "firebase/firestore";
 import { db } from "../../firebase.config";
+import { useNavigation } from "@react-navigation/native";
 
 const { width, height } = Dimensions.get('window');
 const isTablet = width >= 768;
 const isSmallPhone = width < 375;
 
 const SuperAdminUsersScreen = () => {
+    const navigation = useNavigation();
     const [users, setUsers] = useState([]);
     const [filteredUsers, setFilteredUsers] = useState([]);
     const [loading, setLoading] = useState(true);
@@ -242,156 +247,206 @@ const SuperAdminUsersScreen = () => {
 
     if (loading) {
         return (
-            <View style={styles.loadingContainer}>
-                <ActivityIndicator size="large" color="#3b82f6" />
-                <Text style={styles.loadingText}>Loading users...</Text>
-            </View>
+            <SafeAreaView style={styles.safeArea}>
+                <StatusBar barStyle="dark-content" backgroundColor="#ffffff" />
+                <View style={styles.loadingContainer}>
+                    <ActivityIndicator size="large" color="#1a73e8" />
+                    <Text style={styles.loadingText}>Loading users...</Text>
+                </View>
+            </SafeAreaView>
         );
     }
 
     const tabStats = getTabStats();
 
     return (
-        <View style={styles.container}>
-            {/* Header */}
-            <View style={styles.header}>
-                <View>
-                    <Text style={styles.title}>User Management</Text>
-                    <Text style={styles.subtitle}>
-                        Manage all system users efficiently
-                    </Text>
-                </View>
-                <View style={styles.statsContainer}>
-                    <Text style={styles.totalUsers}>{users.length} Total Users</Text>
-                </View>
-            </View>
-
-            {/* Tabs */}
-            <View style={styles.tabsWrapper}>
-                <ScrollView
-                    horizontal
-                    showsHorizontalScrollIndicator={false}
-                    contentContainerStyle={styles.tabsContent}
-                >
-                    {tabs.map((tab) => (
+        <SafeAreaView style={styles.safeArea}>
+            <StatusBar barStyle="dark-content" backgroundColor="#ffffff" />
+            <View style={styles.container}>
+                {/* Header with Back Button */}
+                <View style={styles.header}>
+                    <View style={styles.headerContent}>
                         <TouchableOpacity
-                            key={tab.id}
-                            style={[
-                                styles.tab,
-                                activeTab === tab.id && styles.activeTab
-                            ]}
-                            onPress={() => setActiveTab(tab.id)}
+                            style={styles.backButton}
+                            onPress={() => navigation.goBack()}
                         >
-                            <Ionicons
-                                name={tab.icon}
-                                size={isTablet ? 18 : 16}
-                                color={activeTab === tab.id ? "#fff" : "#6b7280"}
-                            />
-                            <Text style={[
-                                styles.tabText,
-                                activeTab === tab.id && styles.activeTabText
-                            ]}>
-                                {isSmallPhone ? tab.label.split(' ')[0] : tab.label}
-                            </Text>
-                            <View style={[
-                                styles.tabBadge,
-                                activeTab === tab.id && styles.activeTabBadge
-                            ]}>
-                                <Text style={styles.tabBadgeText}>
-                                    {tabStats[tab.id]}
-                                </Text>
-                            </View>
+                            <Ionicons name="arrow-back" size={24} color="#1f2937" />
+                            <Text style={styles.backButtonText}>Back</Text>
                         </TouchableOpacity>
-                    ))}
-                </ScrollView>
-            </View>
-
-            {/* Content */}
-            <View style={styles.content}>
-                <View style={styles.contentHeader}>
-                    <Text style={styles.sectionTitle}>
-                        {tabs.find(tab => tab.id === activeTab)?.label}
-                    </Text>
-                    <Text style={styles.resultCount}>
-                        {filteredUsers.length} user{filteredUsers.length !== 1 ? 's' : ''}
-                    </Text>
+                        {/* <View style={styles.headerTitleContainer}>
+                            <Text style={styles.headerTitle}>User Management</Text>
+                            <Text style={styles.headerSubtitle}>
+                                Manage all system users efficiently
+                            </Text>
+                        </View> */}
+                        <View style={styles.headerRight}>
+                            <View style={styles.statsContainer}>
+                                <Text style={styles.totalUsers}>{users.length} Total Users</Text>
+                            </View>
+                        </View>
+                    </View>
                 </View>
 
-                {filteredUsers.length === 0 ? (
-                    <View style={styles.emptyState}>
-                        <Ionicons
-                            name="people-outline"
-                            size={isTablet ? 80 : 60}
-                            color="#d1d5db"
-                        />
-                        <Text style={styles.emptyTitle}>No users found</Text>
-                        <Text style={styles.emptyDescription}>
-                            {activeTab === 'pending'
-                                ? 'No users pending approval at the moment'
-                                : `No ${activeTab} users found in the system`
-                            }
+                {/* Tabs */}
+                <View style={styles.tabsWrapper}>
+                    <ScrollView
+                        horizontal
+                        showsHorizontalScrollIndicator={false}
+                        contentContainerStyle={styles.tabsContent}
+                    >
+                        {tabs.map((tab) => (
+                            <TouchableOpacity
+                                key={tab.id}
+                                style={[
+                                    styles.tab,
+                                    activeTab === tab.id && styles.activeTab
+                                ]}
+                                onPress={() => setActiveTab(tab.id)}
+                            >
+                                <Ionicons
+                                    name={tab.icon}
+                                    size={isTablet ? 18 : 16}
+                                    color={activeTab === tab.id ? "#fff" : "#6b7280"}
+                                />
+                                <Text style={[
+                                    styles.tabText,
+                                    activeTab === tab.id && styles.activeTabText
+                                ]}>
+                                    {isSmallPhone ? tab.label.split(' ')[0] : tab.label}
+                                </Text>
+                                <View style={[
+                                    styles.tabBadge,
+                                    activeTab === tab.id && styles.activeTabBadge
+                                ]}>
+                                    <Text style={styles.tabBadgeText}>
+                                        {tabStats[tab.id]}
+                                    </Text>
+                                </View>
+                            </TouchableOpacity>
+                        ))}
+                    </ScrollView>
+                </View>
+
+                {/* Content */}
+                <View style={styles.content}>
+                    <View style={styles.contentHeader}>
+                        <Text style={styles.sectionTitle}>
+                            {tabs.find(tab => tab.id === activeTab)?.label}
+                        </Text>
+                        <Text style={styles.resultCount}>
+                            {filteredUsers.length} user{filteredUsers.length !== 1 ? 's' : ''}
                         </Text>
                     </View>
-                ) : (
-                    <FlatList
-                        data={filteredUsers}
-                        keyExtractor={(item) => item.id}
-                        renderItem={renderUserItem}
-                        showsVerticalScrollIndicator={false}
-                        contentContainerStyle={styles.listContent}
-                        ItemSeparatorComponent={() => <View style={styles.separator} />}
-                    />
-                )}
+
+                    {filteredUsers.length === 0 ? (
+                        <View style={styles.emptyState}>
+                            <Ionicons
+                                name="people-outline"
+                                size={isTablet ? 80 : 60}
+                                color="#d1d5db"
+                            />
+                            <Text style={styles.emptyTitle}>No users found</Text>
+                            <Text style={styles.emptyDescription}>
+                                {activeTab === 'pending'
+                                    ? 'No users pending approval at the moment'
+                                    : `No ${activeTab} users found in the system`
+                                }
+                            </Text>
+                        </View>
+                    ) : (
+                        <FlatList
+                            data={filteredUsers}
+                            keyExtractor={(item) => item.id}
+                            renderItem={renderUserItem}
+                            showsVerticalScrollIndicator={false}
+                            contentContainerStyle={styles.listContent}
+                            ItemSeparatorComponent={() => <View style={styles.separator} />}
+                        />
+                    )}
+                </View>
             </View>
-        </View>
+        </SafeAreaView>
     );
 };
 
 const styles = StyleSheet.create({
+    safeArea: {
+        flex: 1,
+        backgroundColor: "#ffffff",
+    },
     container: {
         flex: 1,
-        backgroundColor: "#f8fafc",
+        backgroundColor: "#f8f9fa",
     },
     loadingContainer: {
         flex: 1,
         justifyContent: "center",
         alignItems: "center",
-        backgroundColor: "#fff",
+        backgroundColor: "#ffffff",
     },
     loadingText: {
-        marginTop: 12,
+        marginTop: 16,
         fontSize: 16,
-        color: "#6b7280",
-        fontWeight: '500',
+        color: "#5f6368",
     },
+    // Header Styles
     header: {
-        backgroundColor: "#fff",
-        paddingHorizontal: isTablet ? 24 : 16,
-        paddingTop: isTablet ? 20 : 16,
-        paddingBottom: isTablet ? 16 : 12,
+        backgroundColor: "#ffffff",
+        paddingHorizontal: 16,
+        paddingTop: 16,
+        paddingBottom: 20,
         borderBottomWidth: 1,
         borderBottomColor: "#e5e7eb",
-        flexDirection: isTablet ? 'row' : 'column',
-        justifyContent: isTablet ? 'space-between' : 'flex-start',
-        alignItems: isTablet ? 'center' : 'flex-start',
     },
-    title: {
-        fontSize: isTablet ? 28 : 24,
-        fontWeight: "bold",
+    headerContent: {
+        flexDirection: "row",
+        alignItems: "flex-start",
+        justifyContent: "space-between",
+        gap: 16,
+    },
+    backButton: {
+        flexDirection: "row",
+        alignItems: "center",
+        paddingHorizontal: 12,
+        paddingVertical: 8,
+        borderRadius: 8,
+        backgroundColor: "#f8fafc",
+        borderWidth: 1,
+        borderColor: "#e5e7eb",
+    },
+    backButtonText: {
+        marginLeft: 6,
+        fontSize: 14,
+        fontWeight: '600',
         color: "#1f2937",
     },
-    subtitle: {
-        fontSize: isTablet ? 16 : 14,
+    headerTitleContainer: {
+        flex: 1,
+        alignItems: "center",
+    },
+    headerTitle: {
+        fontSize: 24,
+        fontWeight: "bold",
+        color: "#1f2937",
+        marginBottom: 4,
+        textAlign: "center",
+    },
+    headerSubtitle: {
+        fontSize: 14,
         color: "#6b7280",
-        marginTop: 4,
+        textAlign: "center",
+    },
+    headerRight: {
+        alignItems: 'flex-end',
+        minWidth: 100,
     },
     statsContainer: {
-        marginTop: isTablet ? 0 : 8,
+        marginTop: 0,
     },
     totalUsers: {
         fontSize: isTablet ? 16 : 14,
         fontWeight: '600',
-        color: "#3b82f6",
+        color: "#1a73e8",
         backgroundColor: "#dbeafe",
         paddingHorizontal: 12,
         paddingVertical: 6,
@@ -419,8 +474,8 @@ const styles = StyleSheet.create({
         minWidth: isTablet ? 100 : 80,
     },
     activeTab: {
-        backgroundColor: "#3b82f6",
-        borderColor: "#3b82f6",
+        backgroundColor: "#1a73e8",
+        borderColor: "#1a73e8",
     },
     tabText: {
         marginLeft: 6,

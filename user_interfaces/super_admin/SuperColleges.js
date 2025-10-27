@@ -5,7 +5,7 @@ import {
     StyleSheet,
     FlatList,
     TouchableOpacity,
-    SafeAreaView,
+    
     StatusBar,
     ActivityIndicator,
     RefreshControl,
@@ -13,6 +13,7 @@ import {
     Alert,
     Dimensions
 } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 import { useNavigation } from "@react-navigation/native";
 import { Ionicons } from "@expo/vector-icons";
 import {
@@ -149,33 +150,6 @@ const SuperColleges = () => {
         fetchColleges();
     };
 
-    const handleStatusChange = async (collegeName, newStatus) => {
-        try {
-            // Find all college admins for this college
-            const collegeAdminsQuery = query(
-                collection(db, "users"),
-                where("role", "==", "collegeadmin"),
-                where("college", "==", collegeName)
-            );
-
-            const querySnapshot = await getDocs(collegeAdminsQuery);
-
-            // Update status for all admins of this college
-            const updatePromises = querySnapshot.docs.map(docSnapshot =>
-                updateDoc(doc(db, "users", docSnapshot.id), {
-                    status: newStatus,
-                    updatedAt: new Date()
-                })
-            );
-
-            await Promise.all(updatePromises);
-            Alert.alert("Success", `College status updated to ${newStatus}`);
-        } catch (error) {
-            console.error("Error updating college status:", error);
-            Alert.alert("Error", "Failed to update college status");
-        }
-    };
-
     const filteredColleges = colleges.filter(college => {
         const matchesSearch = college.name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
             college.adminEmail?.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -197,7 +171,7 @@ const SuperColleges = () => {
         const getStatusText = (status) => {
             switch (status) {
                 case "approved": return "Approved";
-                case "pending": return "Pending Review";
+                case "pending": return "Pending";
                 case "rejected": return "Rejected";
                 default: return "Unknown";
             }
@@ -253,13 +227,23 @@ const SuperColleges = () => {
             >
                 <View style={styles.collegeHeader}>
                     <View style={styles.collegeInfo}>
-                        <Text style={styles.collegeName}>{college.name}</Text>
-                        <Text style={styles.collegeDepartment}>{college.department}</Text>
-                        <Text style={styles.collegeEmail}>{college.adminEmail}</Text>
-                        <Text style={styles.adminName}>Admin: {college.adminName}</Text>
+                        <Text style={styles.collegeName} numberOfLines={2} ellipsizeMode="tail">
+                            {college.name}
+                        </Text>
+                        <Text style={styles.collegeDepartment} numberOfLines={1} ellipsizeMode="tail">
+                            {college.department}
+                        </Text>
+                        <Text style={styles.collegeEmail} numberOfLines={1} ellipsizeMode="tail">
+                            {college.adminEmail}
+                        </Text>
+                        <Text style={styles.adminName} numberOfLines={1} ellipsizeMode="tail">
+                            Admin: {college.adminName}
+                        </Text>
                     </View>
                     <View style={[styles.statusBadge, { backgroundColor: getStatusColor(college.status) }]}>
-                        <Text style={styles.statusText}>{getStatusText(college.status)}</Text>
+                        <Text style={styles.statusText} numberOfLines={1}>
+                            {getStatusText(college.status)}
+                        </Text>
                     </View>
                 </View>
 
@@ -276,8 +260,11 @@ const SuperColleges = () => {
                     </View>
                     <View style={styles.stat}>
                         <Ionicons name="calendar-outline" size={16} color="#673ab7" />
-                        <Text style={styles.statNumber}>
-                            {college.createdAt.toLocaleDateString('en-US', { month: 'short', year: 'numeric' })}
+                        <Text style={styles.statNumber} numberOfLines={1}>
+                            {college.createdAt.toLocaleDateString('en-US', {
+                                month: 'short',
+                                year: 'numeric'
+                            })}
                         </Text>
                         <Text style={styles.statLabel}>Joined</Text>
                     </View>
@@ -285,33 +272,17 @@ const SuperColleges = () => {
 
                 <View style={styles.collegeFooter}>
                     <View style={styles.footerLeft}>
-                        <Text style={styles.createdDate}>
+                        <Text style={styles.createdDate} numberOfLines={1}>
                             Registered: {college.createdAt.toLocaleDateString()}
                         </Text>
                         {college.admins && college.admins.length > 1 && (
-                            <Text style={styles.adminsCount}>
-                                {college.admins.length} admin(s) total
+                            <Text style={styles.adminsCount} numberOfLines={1}>
+                                {college.admins.length} admin(s)
                             </Text>
                         )}
                     </View>
 
                     <View style={styles.actionButtons}>
-                        {college.status === "pending" && (
-                            <>
-                                <TouchableOpacity
-                                    style={[styles.actionButton, styles.approveButton]}
-                                    onPress={() => handleStatusChange(college.name, "approved")}
-                                >
-                                    <Ionicons name="checkmark" size={16} color="#ffffff" />
-                                </TouchableOpacity>
-                                <TouchableOpacity
-                                    style={[styles.actionButton, styles.rejectButton]}
-                                    onPress={() => handleStatusChange(college.name, "rejected")}
-                                >
-                                    <Ionicons name="close" size={16} color="#ffffff" />
-                                </TouchableOpacity>
-                            </>
-                        )}
                         <Ionicons name="chevron-forward" size={20} color="#5f6368" />
                     </View>
                 </View>
@@ -329,7 +300,9 @@ const SuperColleges = () => {
             >
                 <Ionicons name={icon} size={24} color={color} />
                 <Text style={[styles.statValue, { color }]}>{value}</Text>
-                <Text style={styles.statLabel}>{label}</Text>
+                <Text style={styles.statLabel} numberOfLines={1}>
+                    {label}
+                </Text>
             </LinearGradient>
         </TouchableOpacity>
     );
@@ -350,8 +323,18 @@ const SuperColleges = () => {
         <SafeAreaView style={styles.safeArea}>
             <StatusBar barStyle="dark-content" backgroundColor="#ffffff" />
             <View style={styles.container}>
-                {/* Header */}
-
+                {/* Header with Back Button */}
+                <View style={styles.header}>
+                    <View style={styles.headerContent}>
+                        <TouchableOpacity
+                            style={styles.backButton}
+                            onPress={() => navigation.goBack()}
+                        >
+                            <Ionicons name="arrow-back" size={24} color="#1f2937" />
+                            <Text style={styles.backButtonText}>Back</Text>
+                        </TouchableOpacity>
+                    </View>
+                </View>
 
                 {/* Quick Stats */}
                 <View style={styles.statsSection}>
@@ -418,7 +401,7 @@ const SuperColleges = () => {
                                 <Text style={[
                                     styles.filterButtonText,
                                     statusFilter === filter && styles.filterButtonTextActive
-                                ]}>
+                                ]} numberOfLines={1}>
                                     {filter.charAt(0).toUpperCase() + filter.slice(1)}
                                 </Text>
                             </TouchableOpacity>
@@ -465,7 +448,6 @@ const SuperColleges = () => {
     );
 };
 
-// ... (Keep the same styles as previous code, just update the colors if needed)
 const styles = StyleSheet.create({
     safeArea: {
         flex: 1,
@@ -486,29 +468,40 @@ const styles = StyleSheet.create({
         fontSize: 16,
         color: "#5f6368",
     },
+    // Header Styles
     header: {
-        paddingVertical: 30,
-        paddingHorizontal: 24,
+        backgroundColor: "#ffffff",
+        paddingHorizontal: 16,
+        paddingTop: 16,
+        paddingBottom: 20,
+        borderBottomWidth: 1,
+        borderBottomColor: "#e5e7eb",
     },
     headerContent: {
         flexDirection: "row",
-        justifyContent: "space-between",
         alignItems: "flex-start",
+        gap: 16,
     },
-    title: {
-        fontSize: 24,
-        fontWeight: "700",
-        color: "#ffffff",
-        marginBottom: 8,
+    backButton: {
+        flexDirection: "row",
+        alignItems: "center",
+        paddingHorizontal: 12,
+        paddingVertical: 8,
+        borderRadius: 8,
+        backgroundColor: "#f8fafc",
+        borderWidth: 1,
+        borderColor: "#e5e7eb",
     },
-    subtitle: {
-        fontSize: 16,
-        color: "rgba(255, 255, 255, 0.9)",
+    backButtonText: {
+        marginLeft: 6,
+        fontSize: 14,
+        fontWeight: '600',
+        color: "#1f2937",
     },
     statsSection: {
         padding: 16,
         backgroundColor: "#ffffff",
-        marginTop: -20,
+        marginTop: 16,
         marginHorizontal: 16,
         borderRadius: 16,
         shadowColor: "#000",
@@ -542,6 +535,7 @@ const styles = StyleSheet.create({
         fontWeight: "600",
         color: "#5f6368",
         textTransform: "uppercase",
+        textAlign: 'center',
     },
     filterSection: {
         padding: 16,
@@ -577,11 +571,13 @@ const styles = StyleSheet.create({
     },
     filterButton: {
         flex: 1,
-        paddingVertical: 8,
-        paddingHorizontal: 16,
+        paddingVertical: 10,
+        paddingHorizontal: 12,
         borderRadius: 20,
         backgroundColor: "#f8f9fa",
         alignItems: "center",
+        minHeight: 36,
+        justifyContent: 'center',
     },
     filterButtonActive: {
         backgroundColor: "#1a73e8",
@@ -590,6 +586,7 @@ const styles = StyleSheet.create({
         fontSize: 12,
         fontWeight: "600",
         color: "#5f6368",
+        textAlign: 'center',
     },
     filterButtonTextActive: {
         color: "#ffffff",
@@ -644,38 +641,47 @@ const styles = StyleSheet.create({
     },
     collegeInfo: {
         flex: 1,
+        marginRight: 12,
     },
     collegeName: {
         fontSize: 18,
         fontWeight: "600",
         color: "#202124",
         marginBottom: 4,
+        lineHeight: 22,
     },
     collegeDepartment: {
         fontSize: 14,
         color: "#1a73e8",
         fontWeight: "500",
         marginBottom: 2,
+        lineHeight: 18,
     },
     collegeEmail: {
         fontSize: 14,
         color: "#5f6368",
         marginBottom: 2,
+        lineHeight: 18,
     },
     adminName: {
         fontSize: 13,
         color: "#34a853",
         fontWeight: "500",
+        lineHeight: 16,
     },
     statusBadge: {
-        paddingHorizontal: 12,
+        paddingHorizontal: 10,
         paddingVertical: 6,
-        borderRadius: 16,
+        borderRadius: 12,
+        minWidth: 70,
+        alignItems: 'center',
+        justifyContent: 'center',
     },
     statusText: {
-        fontSize: 12,
+        fontSize: 11,
         fontWeight: "600",
         color: "#ffffff",
+        textAlign: 'center',
     },
     collegeStats: {
         flexDirection: "row",
@@ -689,18 +695,21 @@ const styles = StyleSheet.create({
     stat: {
         alignItems: "center",
         flex: 1,
+        paddingHorizontal: 4,
     },
     statNumber: {
         fontSize: 16,
         fontWeight: "700",
         color: "#202124",
         marginVertical: 4,
+        textAlign: 'center',
     },
     statLabel: {
         fontSize: 10,
         color: "#5f6368",
         fontWeight: "500",
         textTransform: "uppercase",
+        textAlign: 'center',
     },
     collegeFooter: {
         flexDirection: "row",
@@ -709,34 +718,23 @@ const styles = StyleSheet.create({
     },
     footerLeft: {
         flex: 1,
+        marginRight: 12,
     },
     createdDate: {
         fontSize: 12,
         color: "#5f6368",
         marginBottom: 2,
+        lineHeight: 14,
     },
     adminsCount: {
         fontSize: 12,
         color: "#1a73e8",
         fontWeight: "500",
+        lineHeight: 14,
     },
     actionButtons: {
         flexDirection: "row",
         alignItems: "center",
-        gap: 8,
-    },
-    actionButton: {
-        width: 32,
-        height: 32,
-        borderRadius: 16,
-        justifyContent: "center",
-        alignItems: "center",
-    },
-    approveButton: {
-        backgroundColor: "#34a853",
-    },
-    rejectButton: {
-        backgroundColor: "#ea4335",
     },
     emptyContainer: {
         alignItems: "center",
@@ -749,11 +747,13 @@ const styles = StyleSheet.create({
         color: "#5f6368",
         marginTop: 16,
         marginBottom: 8,
+        textAlign: 'center',
     },
     emptySubtext: {
         fontSize: 14,
         color: "#5f6368",
         textAlign: "center",
+        lineHeight: 20,
     },
 });
 

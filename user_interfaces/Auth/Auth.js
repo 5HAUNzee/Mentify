@@ -7,8 +7,9 @@ import {
   Platform,
   StyleSheet,
   Dimensions,
-  SafeAreaView,
+  
 } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 import * as WebBrowser from "expo-web-browser";
 import { useOAuth, useUser } from "@clerk/clerk-expo";
 import { doc, getDoc, setDoc } from "firebase/firestore";

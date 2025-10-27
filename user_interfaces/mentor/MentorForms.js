@@ -6,7 +6,6 @@ import {
   StyleSheet,
   ScrollView,
   TouchableOpacity,
-  SafeAreaView,
   ActivityIndicator,
   RefreshControl,
   Modal,
@@ -14,6 +13,7 @@ import {
   Image,
   Alert,
 } from 'react-native';
+import { SafeAreaView } from "react-native-safe-area-context";
 import { Feather } from '@expo/vector-icons';
 import { collection, query, where, getDocs, doc, updateDoc } from 'firebase/firestore';
 import { db } from '../../firebase.config';

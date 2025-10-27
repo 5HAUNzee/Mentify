@@ -6,11 +6,12 @@ import {
     TextInput,
     TouchableOpacity,
     ScrollView,
-    SafeAreaView,
+    
     StatusBar,
     Alert,
     ActivityIndicator
 } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 import { useUser } from "@clerk/clerk-expo";
 import { doc, getDoc, updateDoc } from "firebase/firestore";
 import { db } from "../../firebase.config";

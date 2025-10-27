@@ -10,8 +10,8 @@ import {
   Alert,
   ActivityIndicator,
   Image,
-  SafeAreaView,
 } from 'react-native';
+import { SafeAreaView } from "react-native-safe-area-context";
 import { Feather } from '@expo/vector-icons';
 import { collection, addDoc, doc, getDoc, query, where, getDocs, updateDoc } from 'firebase/firestore';
 import { db } from '../../firebase.config';

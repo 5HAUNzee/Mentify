@@ -3,7 +3,6 @@
     "name": "Mentify",
     "slug": "Mentify",
     "version": "1.0.0",
-    
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
@@ -21,10 +20,16 @@
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#ffffff"
       },
-      "edgeToEdgeEnabled": true
+      "edgeToEdgeEnabled": true,
+      "package": "com.anonymous.Mentify"
     },
     "web": {
       "favicon": "./assets/favicon.png"
+    },
+    "extra": {
+      "eas": {
+        "projectId": "6b3cea8b-bf13-464b-b3c9-3483573f6b2c"
+      }
     }
   }
 }
