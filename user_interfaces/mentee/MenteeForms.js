@@ -1,4 +1,4 @@
-// screens/MenteeForms.js - COMPLETE WORKING VERSION
+// screens/MenteeForms.js - IMPROVED BLUE THEME
 import React, { useEffect, useState } from 'react';
 import {
   View,
@@ -16,7 +16,7 @@ import { db } from '../../firebase.config';
 import { useAuth } from '@clerk/clerk-expo';
 
 export default function MenteeForms({ navigation }) {
-  const { userId } = useAuth();
+  const { userId, signOut } = useAuth();
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [forms, setForms] = useState([]);
@@ -30,7 +30,6 @@ export default function MenteeForms({ navigation }) {
       console.log('=== LOADING FORMS ===');
       console.log('My User ID:', userId);
       
-      // Get ALL forms from database
       const snapshot = await getDocs(collection(db, 'forms'));
       console.log('Total forms in database:', snapshot.size);
       
@@ -39,9 +38,7 @@ export default function MenteeForms({ navigation }) {
       snapshot.forEach((doc) => {
         const data = doc.data();
         
-        // Only check deployed forms
         if (data.status === 'deployed') {
-          // Check BOTH menteeIds and deployedTo arrays
           const menteeIds = data.menteeIds || [];
           const deployedTo = data.deployedTo || [];
           
@@ -50,7 +47,6 @@ export default function MenteeForms({ navigation }) {
           console.log('  menteeIds:', menteeIds);
           console.log('  deployedTo:', deployedTo);
           
-          // Check if my ID is in either array
           const isInMenteeIds = menteeIds.includes(userId);
           const isInDeployedTo = deployedTo.includes(userId);
           
@@ -84,6 +80,15 @@ export default function MenteeForms({ navigation }) {
     }
   };
 
+  const handleSignOut = async () => {
+    try {
+      await signOut();
+      navigation.replace('Auth');
+    } catch (err) {
+      console.error('Sign out error:', err);
+    }
+  };
+
   const onRefresh = () => {
     setRefreshing(true);
     loadForms();
@@ -93,7 +98,7 @@ export default function MenteeForms({ navigation }) {
     return (
       <SafeAreaView style={styles.container}>
         <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color="#2563eb" />
+          <ActivityIndicator size="large" color="#3b82f6" />
           <Text style={styles.loadingText}>Loading forms...</Text>
         </View>
       </SafeAreaView>
@@ -102,16 +107,11 @@ export default function MenteeForms({ navigation }) {
 
   return (
     <SafeAreaView style={styles.container}>
-      {/* Header */}
+      {/* Header - Same as MenteeDashboard */}
       <View style={styles.header}>
-        <View>
-          <Text style={styles.headerTitle}>My Forms</Text>
-          <Text style={styles.headerSubtitle}>
-            {forms.length} {forms.length === 1 ? 'form' : 'forms'} available
-          </Text>
-        </View>
-        <TouchableOpacity onPress={onRefresh} style={styles.refreshButton}>
-          <Feather name="refresh-cw" size={20} color="#2563eb" />
+        <Text style={styles.headerTitle}>My Forms</Text>
+        <TouchableOpacity onPress={handleSignOut} style={styles.logoutButton}>
+          <Text style={styles.logoutText}>Logout</Text>
         </TouchableOpacity>
       </View>
 
@@ -119,48 +119,78 @@ export default function MenteeForms({ navigation }) {
       <ScrollView
         style={styles.content}
         contentContainerStyle={styles.contentContainer}
+        showsVerticalScrollIndicator={false}
         refreshControl={
-          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={['#2563eb']} />
+          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={['#3b82f6']} />
         }
       >
+        {/* Stats Card */}
+        <View style={styles.statsCard}>
+          <View style={styles.statItem}>
+            <Feather name="file-text" size={24} color="#3b82f6" />
+            <View style={styles.statInfo}>
+              <Text style={styles.statValue}>{forms.length}</Text>
+              <Text style={styles.statLabel}>Available Forms</Text>
+            </View>
+          </View>
+          <TouchableOpacity style={styles.refreshIconBtn} onPress={onRefresh}>
+            <Feather name="refresh-cw" size={20} color="#3b82f6" />
+          </TouchableOpacity>
+        </View>
+
         {forms.length === 0 ? (
           <View style={styles.emptyContainer}>
-            <Feather name="inbox" size={64} color="#d1d5db" />
+            <View style={styles.emptyIconCircle}>
+              <Feather name="inbox" size={48} color="#3b82f6" />
+            </View>
             <Text style={styles.emptyTitle}>No Forms Available</Text>
             <Text style={styles.emptyText}>
-              Check the console logs to see what's happening
+              You don't have any assigned forms yet.{'\n'}
+              Check back later or contact your mentor.
             </Text>
           </View>
         ) : (
-          forms.map((form) => (
+          forms.map((form, index) => (
             <TouchableOpacity
               key={form.id}
               style={styles.formCard}
+              activeOpacity={0.7}
               onPress={() => navigation.navigate('MenteeFormScreen', { formId: form.id })}
             >
-              <View style={styles.formHeader}>
-                <View style={styles.iconCircle}>
-                  <Feather name="file-text" size={24} color="#2563eb" />
-                </View>
-                <View style={styles.formInfo}>
-                  <Text style={styles.formTitle}>{form.title}</Text>
-                  <Text style={styles.formDescription}>{form.description}</Text>
-                  <View style={styles.semesterBadge}>
-                    <Text style={styles.semesterText}>{form.semester}</Text>
+              {/* Card Top Bar */}
+              <View style={styles.cardTopBar} />
+              
+              <View style={styles.cardContent}>
+                <View style={styles.formHeader}>
+                  <View style={styles.iconCircle}>
+                    <Feather name="file-text" size={20} color="#3b82f6" />
+                  </View>
+                  <View style={styles.formInfo}>
+                    <Text style={styles.formTitle}>{form.title}</Text>
+                    <Text style={styles.formDescription} numberOfLines={2}>
+                      {form.description}
+                    </Text>
                   </View>
                 </View>
-              </View>
-              
-              <View style={styles.fillButton}>
-                <Feather name="edit-3" size={16} color="#fff" />
-                <Text style={styles.fillButtonText}>Fill Form</Text>
+                
+                <View style={styles.cardFooter}>
+                  <View style={styles.semesterBadge}>
+                    <Feather name="bookmark" size={10} color="#3b82f6" />
+                    <Text style={styles.semesterText}>{form.semester}</Text>
+                  </View>
+                  
+                  <View style={styles.fillButton}>
+                    <Text style={styles.fillButtonText}>Fill Form</Text>
+                    <Feather name="arrow-right" size={14} color="#fff" />
+                  </View>
+                </View>
               </View>
             </TouchableOpacity>
           ))
         )}
       </ScrollView>
 
-      {/* Bottom Navigation */}
+      {/* Bottom Navigation - DON'T TOUCH */}
       <View style={styles.bottomNav}>
         <TouchableOpacity
           style={styles.navItem}
@@ -175,7 +205,7 @@ export default function MenteeForms({ navigation }) {
           <Text style={[styles.navLabel, styles.navLabelActive]}>Forms</Text>
         </TouchableOpacity>
 
-        <TouchableOpacity style={styles.navItem}>
+        <TouchableOpacity style={styles.navItem} onPress={() => navigation.navigate('MenteeChat')}>
           <Feather name="message-circle" size={24} color="#9ca3af" />
           <Text style={styles.navLabel}>Doubts</Text>
         </TouchableOpacity>
@@ -195,7 +225,7 @@ export default function MenteeForms({ navigation }) {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f9fafb',
+    backgroundColor: '#f8fafc',
   },
   loadingContainer: {
     flex: 1,
@@ -208,26 +238,30 @@ const styles = StyleSheet.create({
     color: '#6b7280',
   },
   header: {
+    padding: 20,
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    padding: 16,
     backgroundColor: '#fff',
     borderBottomWidth: 1,
     borderBottomColor: '#e5e7eb',
   },
   headerTitle: {
-    fontSize: 24,
-    fontWeight: '700',
+    fontSize: 18,
+    fontWeight: '600',
     color: '#111827',
   },
-  headerSubtitle: {
-    fontSize: 14,
-    color: '#6b7280',
-    marginTop: 4,
+  logoutButton: {
+    backgroundColor: '#fff',
+    paddingVertical: 8,
+    paddingHorizontal: 15,
+    borderRadius: 8,
+   
   },
-  refreshButton: {
-    padding: 8,
+  logoutText: {
+    color: '#ef4444',
+    fontWeight: '600',
+    fontSize: 14,
   },
   content: {
     flex: 1,
@@ -236,38 +270,94 @@ const styles = StyleSheet.create({
     padding: 16,
     paddingBottom: 100,
   },
+  statsCard: {
+    backgroundColor: '#fff',
+    borderRadius: 12,
+    padding: 16,
+    marginBottom: 16,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOpacity: 0.05,
+    shadowRadius: 8,
+    elevation: 2,
+  },
+  statItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  statInfo: {
+    justifyContent: 'center',
+  },
+  statValue: {
+    fontSize: 24,
+    fontWeight: '700',
+    color: '#111827',
+  },
+  statLabel: {
+    fontSize: 13,
+    color: '#6b7280',
+    marginTop: 2,
+  },
+  refreshIconBtn: {
+    padding: 8,
+    backgroundColor: '#eff6ff',
+    borderRadius: 8,
+  },
   emptyContainer: {
     alignItems: 'center',
     paddingTop: 80,
+    paddingHorizontal: 40,
+  },
+  emptyIconCircle: {
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    backgroundColor: '#eff6ff',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 20,
   },
   emptyTitle: {
     fontSize: 18,
     fontWeight: '600',
-    color: '#6b7280',
-    marginTop: 16,
+    color: '#111827',
+    marginBottom: 8,
   },
   emptyText: {
     fontSize: 14,
-    color: '#9ca3af',
-    marginTop: 8,
+    color: '#6b7280',
     textAlign: 'center',
+    lineHeight: 20,
   },
   formCard: {
     backgroundColor: '#fff',
     borderRadius: 12,
-    padding: 16,
     marginBottom: 12,
-    borderWidth: 1,
-    borderColor: '#e5e7eb',
+    overflow: 'hidden',
+    shadowColor: '#000',
+    shadowOpacity: 0.05,
+    shadowRadius: 8,
+    shadowOffset: { width: 0, height: 2 },
+    elevation: 2,
+  },
+  cardTopBar: {
+    height: 3,
+    backgroundColor: '#3b82f6',
+  },
+  cardContent: {
+    padding: 14,
   },
   formHeader: {
     flexDirection: 'row',
     marginBottom: 12,
   },
   iconCircle: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
+    width: 44,
+    height: 44,
+    borderRadius: 22,
     backgroundColor: '#eff6ff',
     justifyContent: 'center',
     alignItems: 'center',
@@ -277,40 +367,47 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   formTitle: {
-    fontSize: 16,
+    fontSize: 15,
     fontWeight: '600',
     color: '#111827',
     marginBottom: 4,
   },
   formDescription: {
-    fontSize: 13,
+    fontSize: 12,
     color: '#6b7280',
-    marginBottom: 8,
+    lineHeight: 16,
+  },
+  cardFooter: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
   },
   semesterBadge: {
-    alignSelf: 'flex-start',
+    flexDirection: 'row',
+    alignItems: 'center',
     backgroundColor: '#eff6ff',
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 4,
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 16,
+    gap: 4,
   },
   semesterText: {
     fontSize: 11,
-    color: '#2563eb',
+    color: '#3b82f6',
     fontWeight: '600',
   },
   fillButton: {
     flexDirection: 'row',
-    backgroundColor: '#2563eb',
-    padding: 12,
-    borderRadius: 8,
+    backgroundColor: '#3b82f6',
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 6,
     alignItems: 'center',
-    justifyContent: 'center',
     gap: 6,
   },
   fillButtonText: {
     color: '#fff',
-    fontSize: 14,
+    fontSize: 13,
     fontWeight: '600',
   },
   bottomNav: {
@@ -320,7 +417,6 @@ const styles = StyleSheet.create({
     borderTopColor: '#e5e7eb',
     paddingVertical: 8,
     paddingHorizontal: 16,
-    position: 'absolute',
     bottom: 0,
     left: 0,
     right: 0,

@@ -1,3 +1,4 @@
+// screens/MentorAnnouncements.js - IMPROVED UI
 import React, { useEffect, useState } from "react";
 import {
   View,
@@ -26,10 +27,11 @@ import {
   deleteDoc,
 } from "firebase/firestore";
 import { db } from "../../firebase.config";
-import { useAuth } from "@clerk/clerk-expo";
+import { useAuth, useClerk } from "@clerk/clerk-expo";
 
 export default function MentorAnnouncements({ navigation }) {
-  const { signOut, userId } = useAuth();
+  const { userId } = useAuth();
+  const { signOut } = useClerk();
 
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -40,7 +42,7 @@ export default function MentorAnnouncements({ navigation }) {
   const [modalVisible, setModalVisible] = useState(false);
   const [announcementTitle, setAnnouncementTitle] = useState("");
   const [announcementMessage, setAnnouncementMessage] = useState("");
-  const [priority, setPriority] = useState("normal"); // 'low', 'normal', 'high'
+  const [priority, setPriority] = useState("normal");
 
   useEffect(() => {
     fetchData();
@@ -49,6 +51,7 @@ export default function MentorAnnouncements({ navigation }) {
   const fetchData = async () => {
     try {
       setLoading(true);
+      
       // Fetch mentees
       const assignmentsRef = collection(db, "assignments");
       const assignmentsQuery = query(
@@ -96,22 +99,35 @@ export default function MentorAnnouncements({ navigation }) {
       Alert.alert("Error", "Failed to load data");
     } finally {
       setLoading(false);
+      setRefreshing(false);
     }
   };
 
-  const onRefresh = async () => {
+  const onRefresh = () => {
     setRefreshing(true);
-    await fetchData();
-    setRefreshing(false);
+    fetchData();
   };
 
   const handleSignOut = async () => {
-    try {
-      await signOut();
-      navigation.replace("Auth");
-    } catch (err) {
-      console.error("Sign out error:", err);
-    }
+    Alert.alert(
+      "Logout",
+      "Are you sure you want to log out?",
+      [
+        { text: "Cancel", style: "cancel" },
+        {
+          text: "Logout",
+          style: "destructive",
+          onPress: async () => {
+            try {
+              await signOut();
+              navigation.replace("Auth");
+            } catch (err) {
+              console.error("Sign out error:", err);
+            }
+          },
+        },
+      ]
+    );
   };
 
   const formatDate = (timestamp) => {
@@ -120,7 +136,6 @@ export default function MentorAnnouncements({ navigation }) {
     return date.toLocaleDateString("en-US", {
       month: "short",
       day: "numeric",
-      year: "numeric",
       hour: "2-digit",
       minute: "2-digit",
     });
@@ -129,11 +144,11 @@ export default function MentorAnnouncements({ navigation }) {
   const getPriorityConfig = (priority) => {
     switch (priority) {
       case "high":
-        return { bg: "#FEE2E2", text: "#DC2626", icon: "alert-circle" };
+        return { bg: "#fee2e2", text: "#dc2626", icon: "alert-circle" };
       case "low":
-        return { bg: "#DBEAFE", text: "#2563EB", icon: "info" };
+        return { bg: "#dbeafe", text: "#2563eb", icon: "info" };
       default:
-        return { bg: "#F3F4F6", text: "#6B7280", icon: "bell" };
+        return { bg: "#fef3c7", text: "#d97706", icon: "bell" };
     }
   };
 
@@ -226,7 +241,7 @@ export default function MentorAnnouncements({ navigation }) {
     return (
       <SafeAreaView style={styles.container}>
         <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color="#2563EB" />
+          <ActivityIndicator size="large" color="#f59e0b" />
           <Text style={styles.loadingText}>Loading...</Text>
         </View>
       </SafeAreaView>
@@ -235,7 +250,11 @@ export default function MentorAnnouncements({ navigation }) {
 
   return (
     <SafeAreaView style={styles.container}>
+      {/* Header */}
       <View style={styles.header}>
+        <TouchableOpacity onPress={() => navigation.goBack()}>
+          <Feather name="arrow-left" size={24} color="#111827" />
+        </TouchableOpacity>
         <Text style={styles.headerTitle}>Announcements</Text>
         <TouchableOpacity onPress={handleSignOut}>
           <Text style={styles.logoutBtn}>Logout</Text>
@@ -247,24 +266,28 @@ export default function MentorAnnouncements({ navigation }) {
         contentContainerStyle={styles.contentContainer}
         showsVerticalScrollIndicator={false}
         refreshControl={
-          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
+          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={['#f59e0b']} />
         }
       >
-        {/* Info Card */}
-        <View style={styles.infoCard}>
-          <View style={styles.infoIconContainer}>
-            <Feather name="users" size={24} color="#2563EB" />
+        {/* Stats Card */}
+        <View style={styles.statsCard}>
+          <View style={styles.statsIconCircle}>
+            <Feather name="users" size={28} color="#f59e0b" />
           </View>
-          <View style={styles.infoContent}>
-            <Text style={styles.infoTitle}>Your Mentees</Text>
-            <Text style={styles.infoValue}>{mentees.length} students</Text>
-            <Text style={styles.infoSubtext}>
-              Send announcements to all your mentees
-            </Text>
+          <View style={styles.statsInfo}>
+            <Text style={styles.statsValue}>{mentees.length}</Text>
+            <Text style={styles.statsLabel}>Your Mentees</Text>
+          </View>
+          <View style={styles.statsIconCircle}>
+            <Feather name="megaphone" size={28} color="#f59e0b" />
+          </View>
+          <View style={styles.statsInfo}>
+            <Text style={styles.statsValue}>{announcements.length}</Text>
+            <Text style={styles.statsLabel}>Announcements</Text>
           </View>
         </View>
 
-        {/* Create Announcement Button */}
+        {/* Create Button */}
         <TouchableOpacity
           style={styles.createButton}
           onPress={openAnnouncementModal}
@@ -273,15 +296,17 @@ export default function MentorAnnouncements({ navigation }) {
           <Text style={styles.createButtonText}>Create Announcement</Text>
         </TouchableOpacity>
 
-        {/* Announcements List */}
-        <View style={styles.announcementsSection}>
+        {/* Announcements Section */}
+        <View style={styles.section}>
           <Text style={styles.sectionTitle}>Recent Announcements</Text>
           {announcements.length === 0 ? (
             <View style={styles.emptyContainer}>
-              <Feather name="message-square" size={64} color="#9ca3af" />
+              <View style={styles.emptyIconCircle}>
+                <Feather name="megaphone" size={40} color="#d1d5db" />
+              </View>
               <Text style={styles.emptyText}>No announcements yet</Text>
               <Text style={styles.emptySubtext}>
-                Create your first announcement to notify your mentees
+                Create your first announcement
               </Text>
             </View>
           ) : (
@@ -311,6 +336,7 @@ export default function MentorAnnouncements({ navigation }) {
                       </Text>
                     </View>
                     <TouchableOpacity
+                      style={styles.deleteButton}
                       onPress={() => deleteAnnouncement(announcement.id)}
                     >
                       <Feather name="trash-2" size={18} color="#ef4444" />
@@ -338,33 +364,9 @@ export default function MentorAnnouncements({ navigation }) {
             })
           )}
         </View>
-
-        {/* Mentees List */}
-        <View style={styles.menteesSection}>
-          <Text style={styles.sectionTitle}>Your Mentees</Text>
-          {mentees.length === 0 ? (
-            <View style={styles.emptyContainer}>
-              <Feather name="user-x" size={64} color="#9ca3af" />
-              <Text style={styles.emptyText}>No mentees assigned</Text>
-            </View>
-          ) : (
-            mentees.map((mentee) => (
-              <View key={mentee.id} style={styles.menteeCard}>
-                <View style={styles.menteeAvatar}>
-                  <Feather name="user" size={20} color="#2563EB" />
-                </View>
-                <View style={styles.menteeInfo}>
-                  <Text style={styles.menteeName}>{mentee.name}</Text>
-                  <Text style={styles.menteeRoll}>{mentee.rollNumber}</Text>
-                  <Text style={styles.menteeEmail}>{mentee.email}</Text>
-                </View>
-              </View>
-            ))
-          )}
-        </View>
       </ScrollView>
 
-      {/* Modal for Announcement */}
+      {/* Modal */}
       <Modal
         visible={modalVisible}
         animationType="slide"
@@ -397,7 +399,7 @@ export default function MentorAnnouncements({ navigation }) {
                   style={[styles.input, styles.textArea]}
                   value={announcementMessage}
                   onChangeText={setAnnouncementMessage}
-                  placeholder="Type your announcement message here..."
+                  placeholder="Type your announcement message..."
                   placeholderTextColor="#9ca3af"
                   multiline
                   numberOfLines={8}
@@ -425,7 +427,7 @@ export default function MentorAnnouncements({ navigation }) {
                             : "alert-circle"
                         }
                         size={16}
-                        color={priority === p ? "#2563EB" : "#9ca3af"}
+                        color={priority === p ? "#f59e0b" : "#9ca3af"}
                       />
                       <Text
                         style={[
@@ -440,48 +442,52 @@ export default function MentorAnnouncements({ navigation }) {
                 </View>
               </View>
               <View style={styles.recipientPreview}>
-                <Feather name="users" size={16} color="#6b7280" />
+                <Feather name="users" size={16} color="#f59e0b" />
                 <Text style={styles.recipientPreviewText}>
                   Will be sent to {mentees.length} mentee(s)
                 </Text>
               </View>
-              <View style={styles.modalActions}>
-                <TouchableOpacity
-                  style={styles.submitButton}
-                  onPress={sendAnnouncement}
-                  disabled={sending}
-                >
-                  {sending ? (
-                    <ActivityIndicator size="small" color="#fff" />
-                  ) : (
-                    <>
-                      <Feather name="send" size={16} color="#fff" />
-                      <Text style={styles.submitButtonText}>
-                        Send Announcement
-                      </Text>
-                    </>
-                  )}
-                </TouchableOpacity>
-                <TouchableOpacity
-                  style={styles.cancelButton}
-                  onPress={() => setModalVisible(false)}
-                  disabled={sending}
-                >
-                  <Text style={styles.cancelButtonText}>Cancel</Text>
-                </TouchableOpacity>
-              </View>
+              <TouchableOpacity
+                style={styles.submitButton}
+                onPress={sendAnnouncement}
+                disabled={sending}
+              >
+                {sending ? (
+                  <ActivityIndicator size="small" color="#fff" />
+                ) : (
+                  <>
+                    <Feather name="send" size={18} color="#fff" />
+                    <Text style={styles.submitButtonText}>
+                      Send Announcement
+                    </Text>
+                  </>
+                )}
+              </TouchableOpacity>
             </ScrollView>
           </View>
         </View>
       </Modal>
+
+     
     </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: "#f9fafb" },
-  loadingContainer: { flex: 1, justifyContent: "center", alignItems: "center" },
-  loadingText: { marginTop: 10, fontSize: 16, color: "#6b7280" },
+  container: {
+    flex: 1,
+    backgroundColor: "#f9fafb",
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  loadingText: {
+    marginTop: 12,
+    fontSize: 14,
+    color: "#6b7280",
+  },
   header: {
     flexDirection: "row",
     justifyContent: "space-between",
@@ -491,95 +497,298 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: "#e5e7eb",
   },
-  headerTitle: { fontSize: 20, fontWeight: "bold", color: "#111827" },
-  logoutBtn: { color: "#ef4444", fontWeight: "bold" },
-  content: { flex: 1 },
-  contentContainer: { paddingBottom: 40 },
-  infoCard: {
-    flexDirection: "row",
-    backgroundColor: "#fff",
-    padding: 16,
-    margin: 16,
-    borderRadius: 12,
-    shadowColor: "#000",
-    shadowOpacity: 0.05,
-    shadowRadius: 10,
-    elevation: 2,
+  headerTitle: {
+    fontSize: 18,
+    fontWeight: "600",
+    color: "#111827",
   },
-  infoIconContainer: {
-    width: 50,
-    height: 50,
-    borderRadius: 25,
-    backgroundColor: "#DBEAFE",
+  logoutBtn: {
+    color: "#ef4444",
+    fontSize: 14,
+    fontWeight: "500",
+  },
+  content: {
+    flex: 1,
+  },
+  contentContainer: {
+    padding: 16,
+    paddingBottom: 100,
+  },
+  statsCard: {
+    flexDirection: "row",
+    backgroundColor: "#fef3c7",
+    borderRadius: 12,
+    padding: 16,
+    marginBottom: 16,
+    borderWidth: 1,
+    borderColor: "#fbbf24",
+    justifyContent: "space-around",
+    alignItems: "center",
+  },
+  statsIconCircle: {
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    backgroundColor: "#fff",
     justifyContent: "center",
     alignItems: "center",
-    marginRight: 16,
   },
-  infoContent: { flex: 1 },
-  infoTitle: { fontSize: 16, fontWeight: "bold", color: "#111827" },
-  infoValue: { fontSize: 20, fontWeight: "bold", marginTop: 4 },
-  infoSubtext: { fontSize: 12, color: "#6b7280", marginTop: 2 },
+  statsInfo: {
+    alignItems: "center",
+  },
+  statsValue: {
+    fontSize: 24,
+    fontWeight: "700",
+    color: "#92400e",
+  },
+  statsLabel: {
+    fontSize: 12,
+    color: "#b45309",
+  },
   createButton: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
-    backgroundColor: "#2563EB",
-    marginHorizontal: 16,
-    padding: 12,
+    backgroundColor: "#f59e0b",
+    padding: 14,
     borderRadius: 12,
+    marginBottom: 20,
+    shadowColor: "#f59e0b",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 4,
+    gap: 8,
   },
-  createButtonText: { color: "#fff", fontWeight: "bold", marginLeft: 8 },
-  sectionTitle: { fontSize: 18, fontWeight: "bold", margin: 16, color: "#111827" },
-  announcementsSection: {},
-  emptyContainer: { justifyContent: "center", alignItems: "center", padding: 32 },
-  emptyText: { fontSize: 16, color: "#6b7280", marginTop: 8 },
-  emptySubtext: { fontSize: 12, color: "#9ca3af", marginTop: 4, textAlign: "center" },
+  createButtonText: {
+    color: "#fff",
+    fontWeight: "600",
+    fontSize: 15,
+  },
+  section: {
+    marginBottom: 20,
+  },
+  sectionTitle: {
+    fontSize: 16,
+    fontWeight: "600",
+    color: "#111827",
+    marginBottom: 12,
+  },
+  emptyContainer: {
+    backgroundColor: "#fff",
+    borderRadius: 12,
+    padding: 40,
+    alignItems: "center",
+    borderWidth: 1,
+    borderColor: "#e5e7eb",
+  },
+  emptyIconCircle: {
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    backgroundColor: "#f3f4f6",
+    justifyContent: "center",
+    alignItems: "center",
+    marginBottom: 16,
+  },
+  emptyText: {
+    fontSize: 16,
+    fontWeight: "600",
+    color: "#6b7280",
+    marginBottom: 4,
+  },
+  emptySubtext: {
+    fontSize: 13,
+    color: "#9ca3af",
+  },
   announcementCard: {
     backgroundColor: "#fff",
-    marginHorizontal: 16,
     marginBottom: 12,
-    padding: 12,
+    padding: 16,
     borderRadius: 12,
-    shadowColor: "#000",
-    shadowOpacity: 0.03,
-    shadowRadius: 8,
-    elevation: 1,
+    borderWidth: 1,
+    borderColor: "#e5e7eb",
   },
-  announcementHeader: { flexDirection: "row", justifyContent: "space-between", marginBottom: 8 },
-  priorityBadge: { flexDirection: "row", alignItems: "center", paddingHorizontal: 8, paddingVertical: 4, borderRadius: 8 },
-  priorityText: { fontSize: 12, marginLeft: 4, fontWeight: "bold" },
-  announcementTitle: { fontSize: 16, fontWeight: "bold", color: "#111827", marginBottom: 4 },
-  announcementMessage: { fontSize: 14, color: "#374151" },
-  announcementFooter: { flexDirection: "row", justifyContent: "space-between", marginTop: 8 },
-  recipientInfo: { flexDirection: "row", alignItems: "center" },
-  recipientText: { fontSize: 12, color: "#6b7280", marginLeft: 4 },
-  announcementDate: { fontSize: 12, color: "#6b7280" },
-  menteesSection: {},
-  menteeCard: { flexDirection: "row", backgroundColor: "#fff", marginHorizontal: 16, marginBottom: 12, padding: 12, borderRadius: 12, shadowColor: "#000", shadowOpacity: 0.03, shadowRadius: 8, elevation: 1 },
-  menteeAvatar: { width: 40, height: 40, borderRadius: 20, backgroundColor: "#DBEAFE", justifyContent: "center", alignItems: "center", marginRight: 12 },
-  menteeInfo: { flex: 1 },
-  menteeName: { fontSize: 16, fontWeight: "bold", color: "#111827" },
-  menteeRoll: { fontSize: 14, color: "#6b7280" },
-  menteeEmail: { fontSize: 12, color: "#9ca3af" },
-  modalOverlay: { flex: 1, backgroundColor: "rgba(0,0,0,0.5)", justifyContent: "center" },
-  modalContent: { margin: 16, backgroundColor: "#fff", borderRadius: 12, maxHeight: "90%" },
-  modalHeader: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", padding: 16, borderBottomWidth: 1, borderBottomColor: "#e5e7eb" },
-  modalTitle: { fontSize: 18, fontWeight: "bold", color: "#111827" },
-  modalBody: { padding: 16 },
-  inputGroup: { marginBottom: 16 },
-  inputLabel: { fontSize: 14, fontWeight: "bold", color: "#111827", marginBottom: 4 },
-  input: { borderWidth: 1, borderColor: "#e5e7eb", borderRadius: 8, padding: 8, color: "#111827", backgroundColor: "#f9fafb" },
-  textArea: { height: 100 },
-  priorityOptions: { flexDirection: "row", justifyContent: "space-between" },
-  priorityOption: { flexDirection: "row", alignItems: "center", padding: 8, borderRadius: 8, borderWidth: 1, borderColor: "#e5e7eb" },
-  priorityOptionActive: { borderColor: "#2563EB", backgroundColor: "#DBEAFE" },
-  priorityOptionText: { marginLeft: 4, color: "#6b7280", fontWeight: "bold" },
-  priorityOptionTextActive: { color: "#2563EB" },
-  recipientPreview: { flexDirection: "row", alignItems: "center", marginBottom: 16 },
-  recipientPreviewText: { marginLeft: 4, color: "#6b7280" },
-  modalActions: { flexDirection: "row", justifyContent: "space-between" },
-  submitButton: { flexDirection: "row", alignItems: "center", justifyContent: "center", backgroundColor: "#2563EB", padding: 12, borderRadius: 8, flex: 1, marginRight: 8 },
-  submitButtonText: { color: "#fff", fontWeight: "bold", marginLeft: 4 },
-  cancelButton: { flex: 1, alignItems: "center", justifyContent: "center", padding: 12, borderRadius: 8, borderWidth: 1, borderColor: "#e5e7eb" },
-  cancelButtonText: { fontWeight: "bold", color: "#6b7280" },
+  announcementHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    marginBottom: 12,
+    alignItems: "center",
+  },
+  priorityBadge: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 12,
+    gap: 4,
+  },
+  priorityText: {
+    fontSize: 11,
+    fontWeight: "600",
+    textTransform: "capitalize",
+  },
+  deleteButton: {
+    padding: 4,
+  },
+  announcementTitle: {
+    fontSize: 16,
+    fontWeight: "600",
+    color: "#111827",
+    marginBottom: 8,
+  },
+  announcementMessage: {
+    fontSize: 14,
+    color: "#374151",
+    lineHeight: 20,
+    marginBottom: 12,
+  },
+  announcementFooter: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    paddingTop: 12,
+    borderTopWidth: 1,
+    borderTopColor: "#f3f4f6",
+  },
+  recipientInfo: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+  },
+  recipientText: {
+    fontSize: 12,
+    color: "#6b7280",
+  },
+  announcementDate: {
+    fontSize: 11,
+    color: "#9ca3af",
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: "rgba(0,0,0,0.5)",
+    justifyContent: "flex-end",
+  },
+  modalContent: {
+    backgroundColor: "#fff",
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    maxHeight: "90%",
+  },
+  modalHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    padding: 20,
+    borderBottomWidth: 1,
+    borderBottomColor: "#e5e7eb",
+  },
+  modalTitle: {
+    fontSize: 18,
+    fontWeight: "600",
+    color: "#111827",
+  },
+  modalBody: {
+    padding: 20,
+  },
+  inputGroup: {
+    marginBottom: 20,
+  },
+  inputLabel: {
+    fontSize: 14,
+    fontWeight: "600",
+    color: "#374151",
+    marginBottom: 8,
+  },
+  input: {
+    borderWidth: 1,
+    borderColor: "#e5e7eb",
+    borderRadius: 10,
+    padding: 12,
+    fontSize: 14,
+    color: "#111827",
+    backgroundColor: "#f9fafb",
+  },
+  textArea: {
+    height: 120,
+  },
+  priorityOptions: {
+    flexDirection: "row",
+    gap: 10,
+  },
+  priorityOption: {
+    flex: 1,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    padding: 12,
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: "#e5e7eb",
+    backgroundColor: "#f9fafb",
+    gap: 6,
+  },
+  priorityOptionActive: {
+    borderColor: "#f59e0b",
+    backgroundColor: "#fef3c7",
+  },
+  priorityOptionText: {
+    fontSize: 13,
+    color: "#6b7280",
+    fontWeight: "500",
+  },
+  priorityOptionTextActive: {
+    color: "#f59e0b",
+    fontWeight: "600",
+  },
+  recipientPreview: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#fef3c7",
+    padding: 12,
+    borderRadius: 10,
+    marginBottom: 20,
+    gap: 8,
+  },
+  recipientPreviewText: {
+    fontSize: 13,
+    color: "#92400e",
+    fontWeight: "500",
+  },
+  submitButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "#f59e0b",
+    padding: 16,
+    borderRadius: 12,
+    gap: 8,
+  },
+  submitButtonText: {
+    color: "#fff",
+    fontWeight: "600",
+    fontSize: 15,
+  },
+  bottomNav: {
+    flexDirection: "row",
+    backgroundColor: "#fff",
+    borderTopWidth: 1,
+    borderTopColor: "#e5e7eb",
+    paddingVertical: 8,
+    paddingHorizontal: 16,
+    position: "absolute",
+    bottom: 0,
+    left: 0,
+    right: 0,
+  },
+  navItem: {
+    flex: 1,
+    alignItems: "center",
+    paddingVertical: 8,
+  },
+  navLabel: {
+    fontSize: 11,
+    color: "#9ca3af",
+    marginTop: 4,
+  },
 });

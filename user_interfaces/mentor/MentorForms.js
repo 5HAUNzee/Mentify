@@ -1,4 +1,4 @@
-// screens/MentorForms.js
+// screens/MentorForms.js - IMPROVED UI WITH ORANGE THEME
 import React, { useState, useEffect } from 'react';
 import {
   View,
@@ -17,14 +17,15 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { Feather } from '@expo/vector-icons';
 import { collection, query, where, getDocs, doc, updateDoc } from 'firebase/firestore';
 import { db } from '../../firebase.config';
-import { useAuth } from '@clerk/clerk-expo';
+import { useAuth, useClerk } from '@clerk/clerk-expo';
 
 export default function MentorForms({ navigation }) {
   const { userId } = useAuth();
+  const { signOut } = useClerk();
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [submissions, setSubmissions] = useState([]);
-  const [selectedTab, setSelectedTab] = useState('pending'); // pending, approved, revision
+  const [selectedTab, setSelectedTab] = useState('pending');
   const [selectedSubmission, setSelectedSubmission] = useState(null);
   const [modalVisible, setModalVisible] = useState(false);
   const [comments, setComments] = useState('');
@@ -37,9 +38,7 @@ export default function MentorForms({ navigation }) {
   const loadSubmissions = async () => {
     try {
       setLoading(true);
-      console.log('Loading submissions for mentor:', userId);
-
-      // Get all submissions assigned to this mentor
+      
       const submissionsQuery = query(
         collection(db, 'submissions'),
         where('mentorId', '==', userId)
@@ -55,7 +54,6 @@ export default function MentorForms({ navigation }) {
         });
       });
 
-      console.log('Total submissions found:', allSubmissions.length);
       setSubmissions(allSubmissions);
     } catch (error) {
       console.error('Error loading submissions:', error);
@@ -169,14 +167,14 @@ export default function MentorForms({ navigation }) {
   const getStatusColor = (status) => {
     switch (status) {
       case 'pending':
-        return '#f59e0b';
+        return { bg: '#fef3c7', text: '#f59e0b' };
       case 'approved':
-        return '#10b981';
+        return { bg: '#d1fae5', text: '#10b981' };
       case 'needs_revision':
       case 'revision_required':
-        return '#ef4444';
+        return { bg: '#fee2e2', text: '#ef4444' };
       default:
-        return '#6b7280';
+        return { bg: '#f3f4f6', text: '#6b7280' };
     }
   };
 
@@ -194,53 +192,56 @@ export default function MentorForms({ navigation }) {
     }
   };
 
-  const renderSubmissionCard = (submission) => (
-    <TouchableOpacity
-      key={submission.id}
-      style={styles.submissionCard}
-      onPress={() => openSubmissionDetails(submission)}
-    >
-      <View style={styles.cardHeader}>
-        <View style={styles.studentInfo}>
-          {submission.menteeProfilePic ? (
-            <Image source={{ uri: submission.menteeProfilePic }} style={styles.studentPic} />
-          ) : (
-            <View style={styles.studentPicPlaceholder}>
-              <Feather name="user" size={20} color="#9ca3af" />
+  const renderSubmissionCard = (submission) => {
+    const statusColors = getStatusColor(submission.status);
+    return (
+      <TouchableOpacity
+        key={submission.id}
+        style={styles.submissionCard}
+        onPress={() => openSubmissionDetails(submission)}
+      >
+        <View style={styles.cardHeader}>
+          <View style={styles.studentInfo}>
+            {submission.menteeProfilePic ? (
+              <Image source={{ uri: submission.menteeProfilePic }} style={styles.studentPic} />
+            ) : (
+              <View style={styles.studentPicPlaceholder}>
+                <Feather name="user" size={20} color="#f59e0b" />
+              </View>
+            )}
+            <View style={styles.studentDetails}>
+              <Text style={styles.studentName}>{submission.menteeName}</Text>
+              <Text style={styles.formTitle}>{submission.formTitle}</Text>
             </View>
-          )}
-          <View style={styles.studentDetails}>
-            <Text style={styles.studentName}>{submission.menteeName}</Text>
-            <Text style={styles.formTitle}>{submission.formTitle}</Text>
+          </View>
+          <View style={[styles.statusBadge, { backgroundColor: statusColors.bg }]}>
+            <Feather name={getStatusIcon(submission.status)} size={12} color={statusColors.text} />
+            <Text style={[styles.statusText, { color: statusColors.text }]}>
+              {submission.status === 'needs_revision' ? 'Revision' : submission.status}
+            </Text>
           </View>
         </View>
-        <View style={[styles.statusBadge, { backgroundColor: `${getStatusColor(submission.status)}20` }]}>
-          <Feather name={getStatusIcon(submission.status)} size={14} color={getStatusColor(submission.status)} />
-          <Text style={[styles.statusText, { color: getStatusColor(submission.status) }]}>
-            {submission.status === 'needs_revision' ? 'Revision' : submission.status}
-          </Text>
-        </View>
-      </View>
 
-      <View style={styles.cardBody}>
-        <View style={styles.infoRow}>
-          <Feather name="calendar" size={14} color="#6b7280" />
-          <Text style={styles.infoText}>
-            Submitted: {new Date(submission.submittedAt).toLocaleDateString()}
-          </Text>
+        <View style={styles.cardBody}>
+          <View style={styles.infoRow}>
+            <Feather name="calendar" size={14} color="#f59e0b" />
+            <Text style={styles.infoText}>
+              {new Date(submission.submittedAt).toLocaleDateString()}
+            </Text>
+          </View>
+          <View style={styles.infoRow}>
+            <Feather name="book" size={14} color="#f59e0b" />
+            <Text style={styles.infoText}>Semester: {submission.semester}</Text>
+          </View>
         </View>
-        <View style={styles.infoRow}>
-          <Feather name="book" size={14} color="#6b7280" />
-          <Text style={styles.infoText}>Semester: {submission.semester}</Text>
-        </View>
-      </View>
 
-      <TouchableOpacity style={styles.viewButton}>
-        <Text style={styles.viewButtonText}>View Details</Text>
-        <Feather name="chevron-right" size={16} color="#2563eb" />
+        <View style={styles.viewButton}>
+          <Text style={styles.viewButtonText}>View Details</Text>
+          <Feather name="chevron-right" size={16} color="#f59e0b" />
+        </View>
       </TouchableOpacity>
-    </TouchableOpacity>
-  );
+    );
+  };
 
   const filteredSubmissions = filterSubmissions();
 
@@ -248,7 +249,7 @@ export default function MentorForms({ navigation }) {
     return (
       <SafeAreaView style={styles.container}>
         <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color="#2563eb" />
+          <ActivityIndicator size="large" color="#f59e0b" />
           <Text style={styles.loadingText}>Loading submissions...</Text>
         </View>
       </SafeAreaView>
@@ -259,9 +260,12 @@ export default function MentorForms({ navigation }) {
     <SafeAreaView style={styles.container}>
       {/* Header */}
       <View style={styles.header}>
+        <TouchableOpacity onPress={() => navigation.goBack()}>
+          <Feather name="arrow-left" size={24} color="#111827" />
+        </TouchableOpacity>
         <Text style={styles.headerTitle}>Form Submissions</Text>
         <TouchableOpacity onPress={onRefresh}>
-          <Feather name="refresh-cw" size={20} color="#2563eb" />
+          <Feather name="refresh-cw" size={20} color="#f59e0b" />
         </TouchableOpacity>
       </View>
 
@@ -299,11 +303,13 @@ export default function MentorForms({ navigation }) {
       <ScrollView
         style={styles.content}
         contentContainerStyle={styles.contentContainer}
-        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={['#2563eb']} />}
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={['#f59e0b']} />}
       >
         {filteredSubmissions.length === 0 ? (
           <View style={styles.emptyContainer}>
-            <Feather name="inbox" size={64} color="#d1d5db" />
+            <View style={styles.emptyIconCircle}>
+              <Feather name="inbox" size={40} color="#d1d5db" />
+            </View>
             <Text style={styles.emptyTitle}>No Submissions</Text>
             <Text style={styles.emptyText}>
               {selectedTab === 'pending' ? 'No pending forms to review' :
@@ -328,7 +334,7 @@ export default function MentorForms({ navigation }) {
             <>
               <View style={styles.modalHeader}>
                 <TouchableOpacity onPress={() => setModalVisible(false)}>
-                  <Feather name="x" size={24} color="#111827" />
+                  <Feather name="arrow-left" size={24} color="#111827" />
                 </TouchableOpacity>
                 <Text style={styles.modalTitle}>Form Details</Text>
                 <View style={{ width: 24 }} />
@@ -339,8 +345,12 @@ export default function MentorForms({ navigation }) {
                 <View style={styles.modalSection}>
                   <Text style={styles.sectionTitle}>Student Information</Text>
                   <View style={styles.studentInfoCard}>
-                    {selectedSubmission.menteeProfilePic && (
+                    {selectedSubmission.menteeProfilePic ? (
                       <Image source={{ uri: selectedSubmission.menteeProfilePic }} style={styles.modalStudentPic} />
+                    ) : (
+                      <View style={styles.modalStudentPicPlaceholder}>
+                        <Feather name="user" size={32} color="#f59e0b" />
+                      </View>
                     )}
                     <Text style={styles.modalStudentName}>{selectedSubmission.menteeName}</Text>
                     <Text style={styles.modalStudentEmail}>{selectedSubmission.menteeEmail}</Text>
@@ -386,14 +396,22 @@ export default function MentorForms({ navigation }) {
                   <View style={styles.signaturesContainer}>
                     <View style={styles.signatureItem}>
                       <Text style={styles.signatureLabel}>Student Signature</Text>
-                      {selectedSubmission.menteeSignature && (
+                      {selectedSubmission.menteeSignature ? (
                         <Image source={{ uri: selectedSubmission.menteeSignature }} style={styles.signatureImage} />
+                      ) : (
+                        <View style={styles.signaturePlaceholder}>
+                          <Text style={styles.signaturePlaceholderText}>Not provided</Text>
+                        </View>
                       )}
                     </View>
                     <View style={styles.signatureItem}>
                       <Text style={styles.signatureLabel}>Parent Signature</Text>
-                      {selectedSubmission.parentSignature && (
+                      {selectedSubmission.parentSignature ? (
                         <Image source={{ uri: selectedSubmission.parentSignature }} style={styles.signatureImage} />
+                      ) : (
+                        <View style={styles.signaturePlaceholder}>
+                          <Text style={styles.signaturePlaceholderText}>Not provided</Text>
+                        </View>
                       )}
                     </View>
                   </View>
@@ -450,14 +468,14 @@ export default function MentorForms({ navigation }) {
                 )}
 
                 {selectedSubmission.status === 'approved' && (
-                  <View style={styles.statusMessageContainer}>
+                  <View style={[styles.statusMessageContainer, { backgroundColor: '#d1fae5' }]}>
                     <Feather name="check-circle" size={24} color="#10b981" />
                     <Text style={styles.statusMessage}>This form has been approved</Text>
                   </View>
                 )}
 
                 {(selectedSubmission.status === 'needs_revision' || selectedSubmission.status === 'revision_required') && (
-                  <View style={styles.statusMessageContainer}>
+                  <View style={[styles.statusMessageContainer, { backgroundColor: '#fee2e2' }]}>
                     <Feather name="alert-circle" size={24} color="#ef4444" />
                     <Text style={styles.statusMessage}>Sent back for revision</Text>
                   </View>
@@ -467,6 +485,35 @@ export default function MentorForms({ navigation }) {
           )}
         </SafeAreaView>
       </Modal>
+
+      {/* Bottom Nav */}
+      <View style={styles.bottomNav}>
+        <TouchableOpacity
+          style={styles.navItem}
+          onPress={() => navigation.navigate("MentorDashboard")}
+        >
+          <Feather name="home" size={24} color="#9ca3af" />
+          <Text style={styles.navLabel}>Dashboard</Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={styles.navItem}
+          onPress={() => navigation.navigate("MyMentees")}
+        >
+          <Feather name="users" size={24} color="#9ca3af" />
+          <Text style={styles.navLabel}>Mentees</Text>
+        </TouchableOpacity>
+        <TouchableOpacity style={styles.navItem}>
+          <Feather name="file-text" size={24} color="#f59e0b" />
+          <Text style={[styles.navLabel, styles.navLabelActive]}>Forms</Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={styles.navItem}
+          onPress={() => navigation.navigate("MentorProfile")}
+        >
+          <Feather name="user" size={24} color="#9ca3af" />
+          <Text style={styles.navLabel}>Profile</Text>
+        </TouchableOpacity>
+      </View>
     </SafeAreaView>
   );
 }
@@ -514,15 +561,15 @@ const styles = StyleSheet.create({
     borderBottomColor: 'transparent',
   },
   tabActive: {
-    borderBottomColor: '#2563eb',
+    borderBottomColor: '#f59e0b',
   },
   tabText: {
-    fontSize: 13,
+    fontSize: 12,
     fontWeight: '500',
     color: '#6b7280',
   },
   tabTextActive: {
-    color: '#2563eb',
+    color: '#f59e0b',
     fontWeight: '600',
   },
   content: {
@@ -530,22 +577,30 @@ const styles = StyleSheet.create({
   },
   contentContainer: {
     padding: 16,
-    paddingBottom: 40,
+    paddingBottom: 100,
   },
   emptyContainer: {
     alignItems: 'center',
-    paddingTop: 80,
+    paddingTop: 60,
+  },
+  emptyIconCircle: {
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    backgroundColor: '#f3f4f6',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 16,
   },
   emptyTitle: {
     fontSize: 18,
     fontWeight: '600',
     color: '#6b7280',
-    marginTop: 16,
+    marginBottom: 8,
   },
   emptyText: {
     fontSize: 14,
     color: '#9ca3af',
-    marginTop: 8,
     textAlign: 'center',
   },
   submissionCard: {
@@ -571,13 +626,13 @@ const styles = StyleSheet.create({
     height: 48,
     borderRadius: 24,
     borderWidth: 2,
-    borderColor: '#2563eb',
+    borderColor: '#f59e0b',
   },
   studentPicPlaceholder: {
     width: 48,
     height: 48,
     borderRadius: 24,
-    backgroundColor: '#f3f4f6',
+    backgroundColor: '#fef3c7',
     justifyContent: 'center',
     alignItems: 'center',
   },
@@ -598,8 +653,8 @@ const styles = StyleSheet.create({
   statusBadge: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 8,
-    paddingVertical: 4,
+    paddingHorizontal: 10,
+    paddingVertical: 5,
     borderRadius: 12,
     gap: 4,
   },
@@ -627,11 +682,14 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     paddingVertical: 8,
     gap: 4,
+    borderTopWidth: 1,
+    borderTopColor: '#f3f4f6',
+    paddingTop: 12,
   },
   viewButtonText: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#2563eb',
+    color: '#f59e0b',
   },
   modalContainer: {
     flex: 1,
@@ -665,33 +723,46 @@ const styles = StyleSheet.create({
     marginBottom: 12,
   },
   studentInfoCard: {
-    backgroundColor: '#fff',
+    backgroundColor: '#fef3c7',
     borderRadius: 12,
-    padding: 16,
+    padding: 20,
     alignItems: 'center',
+    borderWidth: 1,
+    borderColor: '#fbbf24',
   },
   modalStudentPic: {
     width: 80,
     height: 80,
     borderRadius: 40,
     borderWidth: 3,
-    borderColor: '#2563eb',
+    borderColor: '#f59e0b',
+    marginBottom: 12,
+  },
+  modalStudentPicPlaceholder: {
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    backgroundColor: '#fff',
+    justifyContent: 'center',
+    alignItems: 'center',
     marginBottom: 12,
   },
   modalStudentName: {
     fontSize: 18,
-    fontWeight: '600',
-    color: '#111827',
+    fontWeight: '700',
+    color: '#92400e',
     marginBottom: 4,
   },
   modalStudentEmail: {
     fontSize: 14,
-    color: '#6b7280',
+    color: '#b45309',
   },
   infoCard: {
     backgroundColor: '#fff',
     borderRadius: 12,
     padding: 16,
+    borderWidth: 1,
+    borderColor: '#e5e7eb',
   },
   infoItem: {
     marginBottom: 12,
@@ -708,11 +779,13 @@ const styles = StyleSheet.create({
   },
   fieldItem: {
     backgroundColor: '#fff',
-    borderRadius: 8,
+    borderRadius: 10,
     padding: 12,
     marginBottom: 8,
     borderLeftWidth: 3,
-    borderLeftColor: '#2563eb',
+    borderLeftColor: '#f59e0b',
+    borderWidth: 1,
+    borderColor: '#e5e7eb',
   },
   fieldLabel: {
     fontSize: 12,
@@ -741,15 +814,29 @@ const styles = StyleSheet.create({
     width: '100%',
     height: 100,
     borderWidth: 1,
-    borderColor: '#d1d5db',
+    borderColor: '#e5e7eb',
     borderRadius: 8,
     backgroundColor: '#fff',
+  },
+  signaturePlaceholder: {
+    width: '100%',
+    height: 100,
+    borderWidth: 1,
+    borderColor: '#e5e7eb',
+    borderRadius: 8,
+    backgroundColor: '#f9fafb',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  signaturePlaceholderText: {
+    fontSize: 12,
+    color: '#9ca3af',
   },
   commentsInput: {
     backgroundColor: '#fff',
     borderWidth: 1,
-    borderColor: '#d1d5db',
-    borderRadius: 8,
+    borderColor: '#e5e7eb',
+    borderRadius: 10,
     padding: 12,
     fontSize: 14,
     color: '#111827',
@@ -766,7 +853,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     backgroundColor: '#10b981',
     padding: 14,
-    borderRadius: 8,
+    borderRadius: 10,
     alignItems: 'center',
     justifyContent: 'center',
     gap: 6,
@@ -781,7 +868,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     backgroundColor: '#ef4444',
     padding: 14,
-    borderRadius: 8,
+    borderRadius: 10,
     alignItems: 'center',
     justifyContent: 'center',
     gap: 6,
@@ -796,8 +883,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     padding: 16,
-    backgroundColor: '#f3f4f6',
-    borderRadius: 8,
+    borderRadius: 10,
     gap: 12,
     marginBottom: 24,
   },
@@ -805,5 +891,30 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '600',
     color: '#111827',
+  },
+  bottomNav: {
+    flexDirection: 'row',
+    backgroundColor: '#fff',
+    borderTopWidth: 1,
+    borderTopColor: '#e5e7eb',
+    paddingVertical: 8,
+    paddingHorizontal: 16,
+    bottom: 0,
+    left: 0,
+    right: 0,
+  },
+  navItem: {
+    flex: 1,
+    alignItems: 'center',
+    paddingVertical: 8,
+  },
+  navLabel: {
+    fontSize: 11,
+    color: '#9ca3af',
+    marginTop: 4,
+  },
+  navLabelActive: {
+    color: '#f59e0b',
+    fontWeight: '600',
   },
 });

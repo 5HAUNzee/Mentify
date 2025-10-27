@@ -1,3 +1,4 @@
+// screens/MentorProfile.js - IMPROVED UI WITH ORANGE THEME
 import React, { useEffect, useState } from "react";
 import {
   View,
@@ -16,10 +17,11 @@ import { Feather } from "@expo/vector-icons";
 import * as ImagePicker from "expo-image-picker";
 import { doc, getDoc, updateDoc } from "firebase/firestore";
 import { db } from "../../firebase.config";
-import { useAuth } from "@clerk/clerk-expo";
+import { useAuth, useClerk } from "@clerk/clerk-expo";
 
 export default function MentorProfile({ navigation }) {
-  const { signOut, userId } = useAuth();
+  const { userId } = useAuth();
+  const { signOut } = useClerk();
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [editing, setEditing] = useState(false);
@@ -85,18 +87,30 @@ export default function MentorProfile({ navigation }) {
   };
 
   const handleSignOut = async () => {
-    try {
-      await signOut();
-      navigation.replace("Auth");
-    } catch (err) {
-      console.error("Sign out error:", err);
-    }
+    Alert.alert(
+      "Logout",
+      "Are you sure you want to log out?",
+      [
+        { text: "Cancel", style: "cancel" },
+        {
+          text: "Logout",
+          style: "destructive",
+          onPress: async () => {
+            try {
+              await signOut();
+              navigation.replace("Auth");
+            } catch (err) {
+              console.error("Sign out error:", err);
+            }
+          },
+        },
+      ]
+    );
   };
 
   const pickImage = async (type) => {
     try {
-      const { status } =
-        await ImagePicker.requestMediaLibraryPermissionsAsync();
+      const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
 
       if (status !== "granted") {
         Alert.alert(
@@ -132,9 +146,9 @@ export default function MentorProfile({ navigation }) {
         type: "image/jpeg",
         name: `${type}_${userId}_${Date.now()}.jpg`,
       });
-      data.append("upload_preset", "Mentify"); // Replace with your Cloudinary preset
+      data.append("upload_preset", "Mentify");
 
-      const cloudName = "dfqa2ojqr"; // Replace with your Cloudinary cloud name
+      const cloudName = "dfqa2ojqr";
       const response = await fetch(
         `https://api.cloudinary.com/v1_1/${cloudName}/image/upload`,
         {
@@ -144,7 +158,6 @@ export default function MentorProfile({ navigation }) {
       );
 
       const result = await response.json();
-      console.log("Cloudinary response:", result);
 
       if (!result.secure_url) {
         throw new Error(result.error?.message || "Upload failed");
@@ -152,14 +165,12 @@ export default function MentorProfile({ navigation }) {
 
       const downloadURL = result.secure_url;
 
-      // Update Firestore
       const userDocRef = doc(db, "users", userId);
       const updateField = type === "profile" ? "profilePic" : "signature";
       await updateDoc(userDocRef, {
         [updateField]: downloadURL,
       });
 
-      // Update local state
       setUserData((prev) => ({
         ...prev,
         [updateField]: downloadURL,
@@ -167,9 +178,7 @@ export default function MentorProfile({ navigation }) {
 
       Alert.alert(
         "Success",
-        `${
-          type === "profile" ? "Profile picture" : "Signature"
-        } uploaded successfully`
+        `${type === "profile" ? "Profile picture" : "Signature"} uploaded successfully`
       );
       setImageModalVisible(false);
     } catch (err) {
@@ -202,13 +211,7 @@ export default function MentorProfile({ navigation }) {
 
       setUserData((prev) => ({
         ...prev,
-        firstName: editData.firstName.trim(),
-        lastName: editData.lastName.trim(),
-        email: editData.email.trim(),
-        phone: editData.phone.trim(),
-        specialization: editData.specialization.trim(),
-        experience: editData.experience.trim(),
-        qualification: editData.qualification.trim(),
+        ...editData,
       }));
 
       Alert.alert("Success", "Profile updated successfully");
@@ -230,7 +233,7 @@ export default function MentorProfile({ navigation }) {
     return (
       <SafeAreaView style={styles.container}>
         <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color="#2563EB" />
+          <ActivityIndicator size="large" color="#f59e0b" />
           <Text style={styles.loadingText}>Loading profile...</Text>
         </View>
       </SafeAreaView>
@@ -239,7 +242,11 @@ export default function MentorProfile({ navigation }) {
 
   return (
     <SafeAreaView style={styles.container}>
+      {/* Header */}
       <View style={styles.header}>
+        <TouchableOpacity onPress={() => navigation.goBack()}>
+          <Feather name="arrow-left" size={24} color="#111827" />
+        </TouchableOpacity>
         <Text style={styles.headerTitle}>My Profile</Text>
         <TouchableOpacity onPress={handleSignOut}>
           <Text style={styles.logoutBtn}>Logout</Text>
@@ -251,7 +258,8 @@ export default function MentorProfile({ navigation }) {
         showsVerticalScrollIndicator={false}
         contentContainerStyle={styles.contentContainer}
       >
-        <View style={styles.profileSection}>
+        {/* Profile Header Card */}
+        <View style={styles.profileHeaderCard}>
           <TouchableOpacity
             style={styles.profilePicContainer}
             onPress={() => openImageModal("profile")}
@@ -263,7 +271,7 @@ export default function MentorProfile({ navigation }) {
               />
             ) : (
               <View style={styles.profilePicPlaceholder}>
-                <Feather name="user" size={48} color="#9ca3af" />
+                <Feather name="user" size={48} color="#f59e0b" />
               </View>
             )}
             <View style={styles.editIconBadge}>
@@ -275,17 +283,20 @@ export default function MentorProfile({ navigation }) {
             {userData.firstName} {userData.lastName}
           </Text>
           <Text style={styles.profileRole}>Mentor</Text>
+          
+          <View style={styles.badgesRow}>
+            <View style={styles.roleBadge}>
+              <Feather name="award" size={12} color="#f59e0b" />
+              <Text style={styles.roleBadgeText}>Mentor</Text>
+            </View>
+            <View style={styles.statusBadge}>
+              <Feather name="check-circle" size={12} color="#10b981" />
+              <Text style={styles.statusBadgeText}>Active</Text>
+            </View>
+          </View>
         </View>
 
-        <View style={styles.roleBadgeContainer}>
-          <View style={styles.roleBadge}>
-            <Text style={styles.roleBadgeText}>Mentor</Text>
-          </View>
-          <View style={styles.statusBadge}>
-            <Text style={styles.statusBadgeText}>Active</Text>
-          </View>
-        </View>
-
+        {/* Info Card */}
         <View style={styles.infoCard}>
           <View style={styles.cardHeader}>
             <Text style={styles.cardTitle}>Personal Information</Text>
@@ -294,7 +305,7 @@ export default function MentorProfile({ navigation }) {
                 style={styles.editButton}
                 onPress={() => setEditing(true)}
               >
-                <Feather name="edit-2" size={16} color="#2563EB" />
+                <Feather name="edit-2" size={16} color="#f59e0b" />
                 <Text style={styles.editButtonText}>Edit</Text>
               </TouchableOpacity>
             )}
@@ -303,7 +314,7 @@ export default function MentorProfile({ navigation }) {
           {editing ? (
             <>
               <View style={styles.inputGroup}>
-                <Text style={styles.inputLabel}>First Name</Text>
+                <Text style={styles.inputLabel}>First Name *</Text>
                 <TextInput
                   style={styles.input}
                   value={editData.firstName}
@@ -316,7 +327,7 @@ export default function MentorProfile({ navigation }) {
               </View>
 
               <View style={styles.inputGroup}>
-                <Text style={styles.inputLabel}>Last Name</Text>
+                <Text style={styles.inputLabel}>Last Name *</Text>
                 <TextInput
                   style={styles.input}
                   value={editData.lastName}
@@ -404,7 +415,10 @@ export default function MentorProfile({ navigation }) {
                   {saving ? (
                     <ActivityIndicator size="small" color="#fff" />
                   ) : (
-                    <Text style={styles.saveButtonText}>Save Changes</Text>
+                    <>
+                      <Feather name="check" size={18} color="#fff" />
+                      <Text style={styles.saveButtonText}>Save Changes</Text>
+                    </>
                   )}
                 </TouchableOpacity>
                 <TouchableOpacity
@@ -429,7 +443,9 @@ export default function MentorProfile({ navigation }) {
           ) : (
             <>
               <View style={styles.infoRow}>
-                <Feather name="user" size={18} color="#6b7280" />
+                <View style={styles.infoIconCircle}>
+                  <Feather name="user" size={16} color="#f59e0b" />
+                </View>
                 <View style={styles.infoContent}>
                   <Text style={styles.infoLabel}>Full Name</Text>
                   <Text style={styles.infoValue}>
@@ -439,7 +455,9 @@ export default function MentorProfile({ navigation }) {
               </View>
 
               <View style={styles.infoRow}>
-                <Feather name="mail" size={18} color="#6b7280" />
+                <View style={styles.infoIconCircle}>
+                  <Feather name="mail" size={16} color="#f59e0b" />
+                </View>
                 <View style={styles.infoContent}>
                   <Text style={styles.infoLabel}>Email</Text>
                   <Text style={styles.infoValue}>{userData.email}</Text>
@@ -447,7 +465,9 @@ export default function MentorProfile({ navigation }) {
               </View>
 
               <View style={styles.infoRow}>
-                <Feather name="phone" size={18} color="#6b7280" />
+                <View style={styles.infoIconCircle}>
+                  <Feather name="phone" size={16} color="#f59e0b" />
+                </View>
                 <View style={styles.infoContent}>
                   <Text style={styles.infoLabel}>Phone</Text>
                   <Text style={styles.infoValue}>
@@ -457,7 +477,9 @@ export default function MentorProfile({ navigation }) {
               </View>
 
               <View style={styles.infoRow}>
-                <Feather name="book" size={18} color="#6b7280" />
+                <View style={styles.infoIconCircle}>
+                  <Feather name="book" size={16} color="#f59e0b" />
+                </View>
                 <View style={styles.infoContent}>
                   <Text style={styles.infoLabel}>Department</Text>
                   <Text style={styles.infoValue}>{userData.department}</Text>
@@ -465,7 +487,9 @@ export default function MentorProfile({ navigation }) {
               </View>
 
               <View style={styles.infoRow}>
-                <Feather name="home" size={18} color="#6b7280" />
+                <View style={styles.infoIconCircle}>
+                  <Feather name="home" size={16} color="#f59e0b" />
+                </View>
                 <View style={styles.infoContent}>
                   <Text style={styles.infoLabel}>College</Text>
                   <Text style={styles.infoValue}>{userData.college}</Text>
@@ -473,7 +497,9 @@ export default function MentorProfile({ navigation }) {
               </View>
 
               <View style={styles.infoRow}>
-                <Feather name="award" size={18} color="#6b7280" />
+                <View style={styles.infoIconCircle}>
+                  <Feather name="award" size={16} color="#f59e0b" />
+                </View>
                 <View style={styles.infoContent}>
                   <Text style={styles.infoLabel}>Specialization</Text>
                   <Text style={styles.infoValue}>
@@ -483,7 +509,9 @@ export default function MentorProfile({ navigation }) {
               </View>
 
               <View style={styles.infoRow}>
-                <Feather name="briefcase" size={18} color="#6b7280" />
+                <View style={styles.infoIconCircle}>
+                  <Feather name="briefcase" size={16} color="#f59e0b" />
+                </View>
                 <View style={styles.infoContent}>
                   <Text style={styles.infoLabel}>Experience</Text>
                   <Text style={styles.infoValue}>
@@ -493,7 +521,9 @@ export default function MentorProfile({ navigation }) {
               </View>
 
               <View style={styles.infoRow}>
-                <Feather name="file-text" size={18} color="#6b7280" />
+                <View style={styles.infoIconCircle}>
+                  <Feather name="file-text" size={16} color="#f59e0b" />
+                </View>
                 <View style={styles.infoContent}>
                   <Text style={styles.infoLabel}>Qualification</Text>
                   <Text style={styles.infoValue}>
@@ -505,6 +535,7 @@ export default function MentorProfile({ navigation }) {
           )}
         </View>
 
+        {/* Signature Card */}
         <View style={styles.infoCard}>
           <Text style={styles.cardTitle}>Digital Signature</Text>
           <TouchableOpacity
@@ -518,7 +549,7 @@ export default function MentorProfile({ navigation }) {
               />
             ) : (
               <View style={styles.signaturePlaceholder}>
-                <Feather name="edit-3" size={32} color="#9ca3af" />
+                <Feather name="edit-3" size={32} color="#f59e0b" />
                 <Text style={styles.signaturePlaceholderText}>
                   Tap to upload signature
                 </Text>
@@ -528,6 +559,7 @@ export default function MentorProfile({ navigation }) {
         </View>
       </ScrollView>
 
+      {/* Image Upload Modal */}
       <Modal
         visible={imageModalVisible}
         animationType="slide"
@@ -538,8 +570,7 @@ export default function MentorProfile({ navigation }) {
           <View style={styles.modalContent}>
             <View style={styles.modalHeader}>
               <Text style={styles.modalTitle}>
-                Upload{" "}
-                {imageType === "profile" ? "Profile Picture" : "Signature"}
+                Upload {imageType === "profile" ? "Profile Picture" : "Signature"}
               </Text>
               <TouchableOpacity onPress={() => setImageModalVisible(false)}>
                 <Feather name="x" size={24} color="#6b7280" />
@@ -553,13 +584,11 @@ export default function MentorProfile({ navigation }) {
                 disabled={uploadingImage}
               >
                 {uploadingImage ? (
-                  <ActivityIndicator size="small" color="#2563EB" />
+                  <ActivityIndicator size="small" color="#f59e0b" />
                 ) : (
                   <>
-                    <Feather name="image" size={24} color="#2563EB" />
-                    <Text style={styles.imageOptionText}>
-                      Choose from Gallery
-                    </Text>
+                    <Feather name="image" size={24} color="#f59e0b" />
+                    <Text style={styles.imageOptionText}>Choose from Gallery</Text>
                   </>
                 )}
               </TouchableOpacity>
@@ -567,6 +596,35 @@ export default function MentorProfile({ navigation }) {
           </View>
         </View>
       </Modal>
+
+      {/* Bottom Nav */}
+      <View style={styles.bottomNav}>
+        <TouchableOpacity
+          style={styles.navItem}
+          onPress={() => navigation.navigate("MentorDashboard")}
+        >
+          <Feather name="home" size={24} color="#9ca3af" />
+          <Text style={styles.navLabel}>Dashboard</Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={styles.navItem}
+          onPress={() => navigation.navigate("MyMentees")}
+        >
+          <Feather name="users" size={24} color="#9ca3af" />
+          <Text style={styles.navLabel}>Mentees</Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={styles.navItem}
+          onPress={() => navigation.navigate("MentorForms")}
+        >
+          <Feather name="file-text" size={24} color="#9ca3af" />
+          <Text style={styles.navLabel}>Forms</Text>
+        </TouchableOpacity>
+        <TouchableOpacity style={styles.navItem}>
+          <Feather name="user" size={24} color="#f59e0b" />
+          <Text style={[styles.navLabel, styles.navLabelActive]}>Profile</Text>
+        </TouchableOpacity>
+      </View>
     </SafeAreaView>
   );
 }
@@ -580,7 +638,7 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    padding: 20,
+    padding: 16,
     backgroundColor: "#fff",
     borderBottomWidth: 1,
     borderBottomColor: "#e5e7eb",
@@ -591,16 +649,16 @@ const styles = StyleSheet.create({
     color: "#111827",
   },
   logoutBtn: {
-    color: "#2563EB",
+    color: "#ef4444",
     fontSize: 14,
-    fontWeight: "600",
+    fontWeight: "500",
   },
   content: {
     flex: 1,
   },
   contentContainer: {
     padding: 16,
-    paddingBottom: 20,
+    paddingBottom: 100,
   },
   loadingContainer: {
     flex: 1,
@@ -612,89 +670,86 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: "#6b7280",
   },
-  profileSection: {
+  profileHeaderCard: {
     alignItems: "center",
     marginBottom: 16,
-    backgroundColor: "#fff",
+    backgroundColor: "#fef3c7",
     borderRadius: 12,
     padding: 24,
     borderWidth: 1,
-    borderColor: "#e5e7eb",
-    shadowColor: "#000",
-    shadowOpacity: 0.05,
-    shadowRadius: 3,
-    elevation: 2,
+    borderColor: "#fbbf24",
   },
   profilePicContainer: {
     position: "relative",
     marginBottom: 16,
   },
   profilePic: {
-    width: 120,
-    height: 120,
-    borderRadius: 60,
-    borderWidth: 4,
-    borderColor: "#2563EB",
+    width: 100,
+    height: 100,
+    borderRadius: 50,
+    borderWidth: 3,
+    borderColor: "#f59e0b",
   },
   profilePicPlaceholder: {
-    width: 120,
-    height: 120,
-    borderRadius: 60,
-    backgroundColor: "#f3f4f6",
+    width: 100,
+    height: 100,
+    borderRadius: 50,
+    backgroundColor: "#fff",
     justifyContent: "center",
     alignItems: "center",
-    borderWidth: 4,
-    borderColor: "#e5e7eb",
+    borderWidth: 3,
+    borderColor: "#f59e0b",
   },
   editIconBadge: {
     position: "absolute",
     bottom: 0,
     right: 0,
-    backgroundColor: "#2563EB",
-    width: 36,
-    height: 36,
-    borderRadius: 18,
+    backgroundColor: "#f59e0b",
+    width: 32,
+    height: 32,
+    borderRadius: 16,
     justifyContent: "center",
     alignItems: "center",
-    borderWidth: 3,
+    borderWidth: 2,
     borderColor: "#fff",
   },
   profileName: {
-    fontSize: 24,
+    fontSize: 20,
     fontWeight: "700",
-    color: "#111827",
+    color: "#92400e",
     marginBottom: 4,
   },
   profileRole: {
     fontSize: 14,
-    color: "#6b7280",
+    color: "#b45309",
+    marginBottom: 12,
   },
-  roleBadgeContainer: {
+  badgesRow: {
     flexDirection: "row",
-    justifyContent: "center",
-    marginBottom: 16,
-    gap: 12,
+    gap: 10,
   },
   roleBadge: {
-    backgroundColor: "#EFF6FF",
-    paddingHorizontal: 16,
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#fff",
+    paddingHorizontal: 12,
     paddingVertical: 6,
-    borderRadius: 16,
-    borderWidth: 1,
-    borderColor: "#93C5FD",
+    borderRadius: 12,
+    gap: 4,
   },
   roleBadgeText: {
     fontSize: 12,
     fontWeight: "600",
-    color: "#1E40AF",
+    color: "#f59e0b",
   },
   statusBadge: {
+    flexDirection: "row",
+    alignItems: "center",
     backgroundColor: "#d1fae5",
-    paddingHorizontal: 16,
+    paddingHorizontal: 12,
     paddingVertical: 6,
-    borderRadius: 16,
-    borderWidth: 1,
-    borderColor: "#10b981",
+    borderRadius: 12,
+    gap: 4,
   },
   statusBadgeText: {
     fontSize: 12,
@@ -708,10 +763,6 @@ const styles = StyleSheet.create({
     marginBottom: 16,
     borderWidth: 1,
     borderColor: "#e5e7eb",
-    shadowColor: "#000",
-    shadowOpacity: 0.05,
-    shadowRadius: 3,
-    elevation: 2,
   },
   cardHeader: {
     flexDirection: "row",
@@ -723,7 +774,6 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: "600",
     color: "#111827",
-    marginBottom: 12,
   },
   editButton: {
     flexDirection: "row",
@@ -733,23 +783,31 @@ const styles = StyleSheet.create({
   editButtonText: {
     fontSize: 14,
     fontWeight: "600",
-    color: "#2563EB",
+    color: "#f59e0b",
   },
   infoRow: {
     flexDirection: "row",
-    alignItems: "flex-start",
+    alignItems: "center",
     paddingVertical: 12,
     borderBottomWidth: 1,
-    borderBottomColor: "#f3f4f6",
+    borderBottomColor: "#f9fafb",
+  },
+  infoIconCircle: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: "#fef3c7",
+    justifyContent: "center",
+    alignItems: "center",
+    marginRight: 12,
   },
   infoContent: {
-    marginLeft: 12,
     flex: 1,
   },
   infoLabel: {
     fontSize: 12,
     color: "#6b7280",
-    marginBottom: 4,
+    marginBottom: 2,
   },
   infoValue: {
     fontSize: 14,
@@ -767,8 +825,8 @@ const styles = StyleSheet.create({
   },
   input: {
     borderWidth: 1,
-    borderColor: "#d1d5db",
-    borderRadius: 8,
+    borderColor: "#e5e7eb",
+    borderRadius: 10,
     padding: 12,
     fontSize: 14,
     color: "#111827",
@@ -776,13 +834,16 @@ const styles = StyleSheet.create({
   },
   editActions: {
     marginTop: 8,
-    gap: 12,
+    gap: 10,
   },
   saveButton: {
-    backgroundColor: "#2563EB",
+    flexDirection: "row",
+    backgroundColor: "#f59e0b",
     padding: 14,
-    borderRadius: 8,
+    borderRadius: 10,
     alignItems: "center",
+    justifyContent: "center",
+    gap: 8,
   },
   saveButtonText: {
     color: "#fff",
@@ -792,10 +853,10 @@ const styles = StyleSheet.create({
   cancelButton: {
     backgroundColor: "#fff",
     padding: 14,
-    borderRadius: 8,
+    borderRadius: 10,
     alignItems: "center",
     borderWidth: 1,
-    borderColor: "#d1d5db",
+    borderColor: "#e5e7eb",
   },
   cancelButtonText: {
     color: "#374151",
@@ -805,8 +866,8 @@ const styles = StyleSheet.create({
   signatureContainer: {
     marginTop: 12,
     borderWidth: 2,
-    borderColor: "#d1d5db",
-    borderRadius: 8,
+    borderColor: "#fbbf24",
+    borderRadius: 10,
     borderStyle: "dashed",
     overflow: "hidden",
   },
@@ -814,17 +875,17 @@ const styles = StyleSheet.create({
     width: "100%",
     height: 150,
     resizeMode: "contain",
-    backgroundColor: "#f9fafb",
+    backgroundColor: "#fef3c7",
   },
   signaturePlaceholder: {
     height: 150,
     justifyContent: "center",
     alignItems: "center",
-    backgroundColor: "#f9fafb",
+    backgroundColor: "#fef3c7",
   },
   signaturePlaceholderText: {
     fontSize: 14,
-    color: "#6b7280",
+    color: "#92400e",
     marginTop: 8,
   },
   modalOverlay: {
@@ -841,7 +902,7 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    padding: 16,
+    padding: 20,
     borderBottomWidth: 1,
     borderBottomColor: "#e5e7eb",
   },
@@ -851,22 +912,47 @@ const styles = StyleSheet.create({
     color: "#111827",
   },
   modalBody: {
-    padding: 16,
+    padding: 20,
   },
   imageOptionButton: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
     padding: 16,
-    backgroundColor: "#EFF6FF",
+    backgroundColor: "#fef3c7",
     borderRadius: 12,
     borderWidth: 1,
-    borderColor: "#2563EB",
+    borderColor: "#f59e0b",
     gap: 12,
   },
   imageOptionText: {
     fontSize: 15,
     fontWeight: "600",
-    color: "#2563EB",
+    color: "#f59e0b",
+  },
+  bottomNav: {
+    flexDirection: "row",
+    backgroundColor: "#fff",
+    borderTopWidth: 1,
+    borderTopColor: "#e5e7eb",
+    paddingVertical: 8,
+    paddingHorizontal: 16,
+    bottom: 0,
+    left: 0,
+    right: 0,
+  },
+  navItem: {
+    flex: 1,
+    alignItems: "center",
+    paddingVertical: 8,
+  },
+  navLabel: {
+    fontSize: 11,
+    color: "#9ca3af",
+    marginTop: 4,
+  },
+  navLabelActive: {
+    color: "#f59e0b",
+    fontWeight: "600",
   },
 });

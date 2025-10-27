@@ -615,7 +615,7 @@ const styles = StyleSheet.create({
     color: "#111827",
   },
   logoutBtn: {
-    color: "#2563EB",
+    color: "red",
     fontSize: 14,
     fontWeight: "600",
   },
@@ -977,7 +977,7 @@ const styles = StyleSheet.create({
     paddingVertical: 10,
     paddingHorizontal: 16,
     justifyContent: "space-around",
-    position: "absolute",
+   
     bottom: 0,
     left: 0,
     right: 0,

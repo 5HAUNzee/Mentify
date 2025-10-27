@@ -1,3 +1,4 @@
+// screens/AttendanceTracker.js - IMPROVED UI
 import React, { useEffect, useState } from "react";
 import {
   View,
@@ -20,14 +21,12 @@ import {
   getDocs,
   addDoc,
   doc,
-  getDoc,
-  updateDoc,
   orderBy,
   Timestamp,
+  deleteDoc,
 } from "firebase/firestore";
 import { db } from "../../firebase.config";
 import { useAuth } from "@clerk/clerk-expo";
-import { deleteDoc } from "firebase/firestore";
 
 export default function AttendanceTracker({ navigation }) {
   const { signOut, userId } = useAuth();
@@ -55,7 +54,6 @@ export default function AttendanceTracker({ navigation }) {
     try {
       setLoading(true);
 
-      // Fetch subjects
       const subjectsRef = collection(db, "subjects");
       const subjectsQuery = query(
         subjectsRef,
@@ -72,7 +70,6 @@ export default function AttendanceTracker({ navigation }) {
           ...subjectDoc.data(),
         };
 
-        // Fetch attendance records for this subject
         const attendanceRef = collection(db, "attendance");
         const attendanceQuery = query(
           attendanceRef,
@@ -87,7 +84,6 @@ export default function AttendanceTracker({ navigation }) {
           ...doc.data(),
         }));
 
-        // Calculate attendance percentage
         const totalClasses = attendanceRecords.length;
         const attendedClasses = attendanceRecords.filter(
           (record) => record.attended
@@ -109,6 +105,7 @@ export default function AttendanceTracker({ navigation }) {
       Alert.alert("Error", "Failed to load attendance data");
     } finally {
       setLoading(false);
+      setRefreshing(false);
     }
   };
 
@@ -125,7 +122,6 @@ export default function AttendanceTracker({ navigation }) {
             try {
               setSaving(true);
 
-              // Delete all attendance records for this subject
               const attendanceRef = collection(db, "attendance");
               const attendanceQuery = query(
                 attendanceRef,
@@ -135,20 +131,11 @@ export default function AttendanceTracker({ navigation }) {
               const attendanceSnap = await getDocs(attendanceQuery);
 
               const deletePromises = attendanceSnap.docs.map((docSnap) =>
-                updateDoc(doc(db, "attendance", docSnap.id), {
-                  deleted: true,
-                })
+                deleteDoc(doc(db, "attendance", docSnap.id))
               );
-
-              // You can use deleteDoc instead of updateDoc if you want to remove them entirely:
-              // import { deleteDoc } from "firebase/firestore";
-              // const deletePromises = attendanceSnap.docs.map((docSnap) =>
-              //   deleteDoc(doc(db, "attendance", docSnap.id))
-              // );
 
               await Promise.all(deletePromises);
 
-              // Delete the subject itself
               const subjectRef = doc(db, "subjects", subjectId);
               await deleteDoc(subjectRef);
 
@@ -172,7 +159,6 @@ export default function AttendanceTracker({ navigation }) {
   const onRefresh = async () => {
     setRefreshing(true);
     await fetchAttendanceData();
-    setRefreshing(false);
   };
 
   const handleSignOut = async () => {
@@ -263,22 +249,22 @@ export default function AttendanceTracker({ navigation }) {
   };
 
   const getPercentageColor = (percentage) => {
-    if (percentage < 75) return "#ef4444"; // Red
-    if (percentage < 85) return "#F59E0B"; // Orange
-    return "#10B981"; // Green
+    if (percentage < 75) return "#ef4444";
+    if (percentage < 85) return "#F59E0B";
+    return "#10B981";
   };
 
   const getPercentageBackground = (percentage) => {
-    if (percentage < 75) return "#FEE2E2"; // Light red
-    if (percentage < 85) return "#FEF3C7"; // Light orange
-    return "#D1FAE5"; // Light green
+    if (percentage < 75) return "#FEE2E2";
+    if (percentage < 85) return "#FEF3C7";
+    return "#D1FAE5";
   };
 
   if (loading) {
     return (
       <SafeAreaView style={styles.container}>
         <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color="#2563EB" />
+          <ActivityIndicator size="large" color="#3b82f6" />
           <Text style={styles.loadingText}>Loading attendance...</Text>
         </View>
       </SafeAreaView>
@@ -287,11 +273,11 @@ export default function AttendanceTracker({ navigation }) {
 
   return (
     <SafeAreaView style={styles.container}>
-      {/* Header */}
+      {/* Header - Matches other screens */}
       <View style={styles.header}>
         <Text style={styles.headerTitle}>Attendance Tracker</Text>
-        <TouchableOpacity onPress={handleSignOut}>
-          <Text style={styles.logoutBtn}>Logout</Text>
+        <TouchableOpacity onPress={handleSignOut} style={styles.logoutButton}>
+          <Text style={styles.logoutText}>Logout</Text>
         </TouchableOpacity>
       </View>
 
@@ -300,7 +286,11 @@ export default function AttendanceTracker({ navigation }) {
         contentContainerStyle={styles.contentContainer}
         showsVerticalScrollIndicator={false}
         refreshControl={
-          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={onRefresh}
+            colors={["#3b82f6"]}
+          />
         }
       >
         {/* Add Subject Button */}
@@ -308,26 +298,38 @@ export default function AttendanceTracker({ navigation }) {
           style={styles.addSubjectButton}
           onPress={() => setAddSubjectModalVisible(true)}
         >
-          <Feather name="plus" size={20} color="#fff" />
+          <Feather name="plus-circle" size={20} color="#fff" />
           <Text style={styles.addSubjectButtonText}>Add New Subject</Text>
         </TouchableOpacity>
 
         {/* Overall Stats */}
         {subjects.length > 0 && (
           <View style={styles.statsCard}>
-            <Text style={styles.statsTitle}>Overall Statistics</Text>
+            <View style={styles.statsHeader}>
+              <Feather name="bar-chart-2" size={20} color="#3b82f6" />
+              <Text style={styles.statsTitle}>Overall Statistics</Text>
+            </View>
             <View style={styles.statsGrid}>
               <View style={styles.statItem}>
+                <View style={styles.statIconCircle}>
+                  <Feather name="book" size={16} color="#3b82f6" />
+                </View>
                 <Text style={styles.statValue}>{subjects.length}</Text>
                 <Text style={styles.statLabel}>Subjects</Text>
               </View>
               <View style={styles.statItem}>
+                <View style={styles.statIconCircle}>
+                  <Feather name="calendar" size={16} color="#10b981" />
+                </View>
                 <Text style={styles.statValue}>
                   {subjects.reduce((sum, s) => sum + s.totalClasses, 0)}
                 </Text>
                 <Text style={styles.statLabel}>Total Classes</Text>
               </View>
               <View style={styles.statItem}>
+                <View style={styles.statIconCircle}>
+                  <Feather name="check-circle" size={16} color="#f59e0b" />
+                </View>
                 <Text style={styles.statValue}>
                   {subjects.reduce((sum, s) => sum + s.attendedClasses, 0)}
                 </Text>
@@ -340,8 +342,10 @@ export default function AttendanceTracker({ navigation }) {
         {/* Subjects List */}
         {subjects.length === 0 ? (
           <View style={styles.emptyContainer}>
-            <Feather name="book-open" size={64} color="#9ca3af" />
-            <Text style={styles.emptyText}>No subjects added yet</Text>
+            <View style={styles.emptyIconCircle}>
+              <Feather name="book-open" size={48} color="#3b82f6" />
+            </View>
+            <Text style={styles.emptyTitle}>No Subjects Added</Text>
             <Text style={styles.emptySubtext}>
               Add your first subject to start tracking attendance
             </Text>
@@ -349,130 +353,147 @@ export default function AttendanceTracker({ navigation }) {
         ) : (
           subjects.map((subject) => (
             <View key={subject.id} style={styles.subjectCard}>
-              {/* Subject Header */}
-              <View style={styles.subjectHeader}>
-                <View style={styles.subjectInfo}>
-                  <Text style={styles.subjectName}>{subject.name}</Text>
-                  <Text style={styles.subjectCode}>{subject.code}</Text>
-                </View>
+              {/* Top color bar */}
+              <View
+                style={[
+                  styles.subjectTopBar,
+                  { backgroundColor: getPercentageColor(subject.percentage) },
+                ]}
+              />
 
-                <View style={{ flexDirection: "row", gap: 8 }}>
+              <View style={styles.subjectContent}>
+                {/* Subject Header */}
+                <View style={styles.subjectHeader}>
+                  <View style={styles.subjectIconCircle}>
+                    <Feather name="book" size={20} color="#3b82f6" />
+                  </View>
+                  <View style={styles.subjectInfo}>
+                    <Text style={styles.subjectName}>{subject.name}</Text>
+                    <Text style={styles.subjectCode}>{subject.code}</Text>
+                  </View>
                   <TouchableOpacity
-                    style={styles.addClassButton}
-                    onPress={() => openAddClassModal(subject)}
-                  >
-                    <Feather name="plus" size={16} color="#2563EB" />
-                    <Text style={styles.addClassButtonText}>Add Class</Text>
-                  </TouchableOpacity>
-
-                  <TouchableOpacity
-                    style={styles.deleteButton}
+                    style={styles.deleteIconButton}
                     onPress={() => deleteSubject(subject.id)}
                   >
                     <Feather name="trash-2" size={16} color="#ef4444" />
                   </TouchableOpacity>
                 </View>
-              </View>
 
-              {/* Attendance Stats */}
-              <View
-                style={[
-                  styles.attendanceStats,
-                  {
-                    backgroundColor: getPercentageBackground(
-                      subject.percentage
-                    ),
-                  },
-                ]}
-              >
-                <View style={styles.statsRow}>
-                  <View style={styles.statsColumn}>
-                    <Text style={styles.statsNumber}>
-                      {subject.attendedClasses}/{subject.totalClasses}
-                    </Text>
-                    <Text style={styles.statsText}>Classes Attended</Text>
-                  </View>
-                  <View style={styles.percentageContainer}>
-                    <Text
-                      style={[
-                        styles.percentageText,
-                        { color: getPercentageColor(subject.percentage) },
-                      ]}
-                    >
-                      {subject.percentage.toFixed(1)}%
-                    </Text>
-                  </View>
-                </View>
-
-                {/* Progress Bar */}
-                <View style={styles.progressBarContainer}>
-                  <View
-                    style={[
-                      styles.progressBar,
-                      {
-                        width: `${subject.percentage}%`,
-                        backgroundColor: getPercentageColor(subject.percentage),
-                      },
-                    ]}
-                  />
-                </View>
-
-                {/* Warning for low attendance */}
-                {subject.percentage < 75 && (
-                  <View style={styles.warningContainer}>
-                    <Feather name="alert-triangle" size={16} color="#ef4444" />
-                    <Text style={styles.warningText}>
-                      Warning: Attendance below 75%! You need to attend{" "}
-                      {Math.ceil(
-                        (0.75 * subject.totalClasses -
-                          subject.attendedClasses) /
-                          0.25
-                      )}{" "}
-                      more consecutive classes to reach 75%
-                    </Text>
-                  </View>
-                )}
-              </View>
-
-              {/* Recent Classes */}
-              {subject.records.length > 0 && (
-                <View style={styles.recentClasses}>
-                  <Text style={styles.recentClassesTitle}>Recent Classes</Text>
-                  {subject.records.slice(0, 5).map((record) => (
-                    <View key={record.id} style={styles.classRecord}>
-                      <View style={styles.classRecordLeft}>
-                        <Feather
-                          name={record.attended ? "check-circle" : "x-circle"}
-                          size={16}
-                          color={record.attended ? "#10B981" : "#ef4444"}
-                        />
-                        <Text style={styles.classDate}>{record.date}</Text>
-                      </View>
-                      <View
+                {/* Attendance Stats */}
+                <View
+                  style={[
+                    styles.attendanceStats,
+                    {
+                      backgroundColor: getPercentageBackground(
+                        subject.percentage
+                      ),
+                    },
+                  ]}
+                >
+                  <View style={styles.statsRow}>
+                    <View style={styles.statsColumn}>
+                      <Text style={styles.statsNumber}>
+                        {subject.attendedClasses}/{subject.totalClasses}
+                      </Text>
+                      <Text style={styles.statsText}>Classes Attended</Text>
+                    </View>
+                    <View style={styles.percentageContainer}>
+                      <Text
                         style={[
-                          styles.statusBadge,
-                          {
-                            backgroundColor: record.attended
-                              ? "#D1FAE5"
-                              : "#FEE2E2",
-                          },
+                          styles.percentageText,
+                          { color: getPercentageColor(subject.percentage) },
                         ]}
                       >
-                        <Text
+                        {subject.percentage.toFixed(1)}%
+                      </Text>
+                    </View>
+                  </View>
+
+                  {/* Progress Bar */}
+                  <View style={styles.progressBarContainer}>
+                    <View
+                      style={[
+                        styles.progressBar,
+                        {
+                          width: `${subject.percentage}%`,
+                          backgroundColor: getPercentageColor(
+                            subject.percentage
+                          ),
+                        },
+                      ]}
+                    />
+                  </View>
+
+                  {/* Warning */}
+                  {subject.percentage < 75 && (
+                    <View style={styles.warningContainer}>
+                      <Feather name="alert-triangle" size={14} color="#ef4444" />
+                      <Text style={styles.warningText}>
+                        Below 75%! Attend{" "}
+                        {Math.ceil(
+                          (0.75 * subject.totalClasses -
+                            subject.attendedClasses) /
+                            0.25
+                        )}{" "}
+                        more classes
+                      </Text>
+                    </View>
+                  )}
+                </View>
+
+                {/* Add Class Button */}
+                <TouchableOpacity
+                  style={styles.addClassButton}
+                  onPress={() => openAddClassModal(subject)}
+                >
+                  <Feather name="plus" size={16} color="#fff" />
+                  <Text style={styles.addClassButtonText}>Record Class</Text>
+                </TouchableOpacity>
+
+                {/* Recent Classes */}
+                {subject.records.length > 0 && (
+                  <View style={styles.recentClasses}>
+                    <Text style={styles.recentClassesTitle}>
+                      Recent ({subject.records.slice(0, 3).length})
+                    </Text>
+                    {subject.records.slice(0, 3).map((record) => (
+                      <View key={record.id} style={styles.classRecord}>
+                        <View style={styles.classRecordLeft}>
+                          <Feather
+                            name={
+                              record.attended ? "check-circle" : "x-circle"
+                            }
+                            size={14}
+                            color={record.attended ? "#10B981" : "#ef4444"}
+                          />
+                          <Text style={styles.classDate}>{record.date}</Text>
+                        </View>
+                        <View
                           style={[
-                            styles.statusText,
+                            styles.statusBadge,
                             {
-                              color: record.attended ? "#10B981" : "#ef4444",
+                              backgroundColor: record.attended
+                                ? "#D1FAE5"
+                                : "#FEE2E2",
                             },
                           ]}
                         >
-                          {record.attended ? "Present" : "Absent"}
-                        </Text>
+                          <Text
+                            style={[
+                              styles.statusText,
+                              {
+                                color: record.attended ? "#10B981" : "#ef4444",
+                              },
+                            ]}
+                          >
+                            {record.attended ? "Present" : "Absent"}
+                          </Text>
+                        </View>
                       </View>
-                    </View>
-                  ))}
-                </View>
-              )}
+                    ))}
+                  </View>
+                )}
+              </View>
             </View>
           ))
         )}
@@ -496,7 +517,7 @@ export default function AttendanceTracker({ navigation }) {
               </TouchableOpacity>
             </View>
 
-            <View style={styles.modalBody}>
+            <ScrollView style={styles.modalBody}>
               <View style={styles.inputGroup}>
                 <Text style={styles.inputLabel}>Subject Name *</Text>
                 <TextInput
@@ -544,7 +565,7 @@ export default function AttendanceTracker({ navigation }) {
                   <Text style={styles.cancelButtonText}>Cancel</Text>
                 </TouchableOpacity>
               </View>
-            </View>
+            </ScrollView>
           </View>
         </View>
       </Modal>
@@ -560,14 +581,16 @@ export default function AttendanceTracker({ navigation }) {
           <View style={styles.modalContent}>
             <View style={styles.modalHeader}>
               <Text style={styles.modalTitle}>
-                Record Attendance - {selectedSubject?.name}
+                Record Attendance
               </Text>
               <TouchableOpacity onPress={() => setAddClassModalVisible(false)}>
                 <Feather name="x" size={24} color="#6b7280" />
               </TouchableOpacity>
             </View>
 
-            <View style={styles.modalBody}>
+            <ScrollView style={styles.modalBody}>
+              <Text style={styles.subjectBadge}>{selectedSubject?.name}</Text>
+
               <View style={styles.inputGroup}>
                 <Text style={styles.inputLabel}>Date *</Text>
                 <TextInput
@@ -585,7 +608,7 @@ export default function AttendanceTracker({ navigation }) {
                   <TouchableOpacity
                     style={[
                       styles.attendanceOption,
-                      attended && styles.attendanceOptionActive,
+                      attended && styles.attendanceOptionActivePresent,
                     ]}
                     onPress={() => setAttended(true)}
                   >
@@ -607,7 +630,7 @@ export default function AttendanceTracker({ navigation }) {
                   <TouchableOpacity
                     style={[
                       styles.attendanceOption,
-                      !attended && styles.attendanceOptionActive,
+                      !attended && styles.attendanceOptionActiveAbsent,
                     ]}
                     onPress={() => setAttended(false)}
                   >
@@ -640,7 +663,7 @@ export default function AttendanceTracker({ navigation }) {
                     <>
                       <Feather name="save" size={16} color="#fff" />
                       <Text style={styles.submitButtonText}>
-                        Record Attendance
+                        Save Attendance
                       </Text>
                     </>
                   )}
@@ -654,7 +677,7 @@ export default function AttendanceTracker({ navigation }) {
                   <Text style={styles.cancelButtonText}>Cancel</Text>
                 </TouchableOpacity>
               </View>
-            </View>
+            </ScrollView>
           </View>
         </View>
       </Modal>
@@ -665,13 +688,13 @@ export default function AttendanceTracker({ navigation }) {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#f9fafb",
+    backgroundColor: "#f8fafc",
   },
   header: {
+    padding: 20,
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    padding: 20,
     backgroundColor: "#fff",
     borderBottomWidth: 1,
     borderBottomColor: "#e5e7eb",
@@ -681,8 +704,15 @@ const styles = StyleSheet.create({
     fontWeight: "600",
     color: "#111827",
   },
-  logoutBtn: {
-    color: "#2563EB",
+  logoutButton: {
+    backgroundColor: "#fff",
+    paddingVertical: 8,
+    paddingHorizontal: 15,
+    borderRadius: 8,
+   
+  },
+  logoutText: {
+    color: "#ef4444",
     fontSize: 14,
     fontWeight: "600",
   },
@@ -703,26 +733,18 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: "#6b7280",
   },
-  deleteButton: {
-    backgroundColor: "#FEE2E2",
-    padding: 8,
-    borderRadius: 8,
-    justifyContent: "center",
-    alignItems: "center",
-  },
-
   addSubjectButton: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
-    backgroundColor: "#2563EB",
+    backgroundColor: "#3b82f6",
     padding: 14,
     borderRadius: 10,
     marginBottom: 16,
     gap: 8,
-    shadowColor: "#000",
-    shadowOpacity: 0.1,
-    shadowRadius: 3,
+    shadowColor: "#3b82f6",
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
     elevation: 3,
   },
   addSubjectButtonText: {
@@ -739,14 +761,19 @@ const styles = StyleSheet.create({
     borderColor: "#e5e7eb",
     shadowColor: "#000",
     shadowOpacity: 0.05,
-    shadowRadius: 3,
+    shadowRadius: 8,
     elevation: 2,
+  },
+  statsHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    marginBottom: 16,
   },
   statsTitle: {
     fontSize: 16,
     fontWeight: "600",
     color: "#111827",
-    marginBottom: 12,
   },
   statsGrid: {
     flexDirection: "row",
@@ -755,14 +782,23 @@ const styles = StyleSheet.create({
   statItem: {
     alignItems: "center",
   },
+  statIconCircle: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: "#eff6ff",
+    justifyContent: "center",
+    alignItems: "center",
+    marginBottom: 8,
+  },
   statValue: {
-    fontSize: 24,
+    fontSize: 20,
     fontWeight: "700",
-    color: "#2563EB",
+    color: "#111827",
     marginBottom: 4,
   },
   statLabel: {
-    fontSize: 12,
+    fontSize: 11,
     color: "#6b7280",
   },
   emptyContainer: {
@@ -773,63 +809,74 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: "#e5e7eb",
   },
-  emptyText: {
+  emptyIconCircle: {
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    backgroundColor: "#eff6ff",
+    justifyContent: "center",
+    alignItems: "center",
+    marginBottom: 16,
+  },
+  emptyTitle: {
     fontSize: 16,
     fontWeight: "600",
     color: "#111827",
-    marginTop: 16,
+    marginBottom: 8,
   },
   emptySubtext: {
     fontSize: 14,
     color: "#6b7280",
-    marginTop: 4,
     textAlign: "center",
   },
   subjectCard: {
     backgroundColor: "#fff",
     borderRadius: 12,
-    padding: 16,
-    marginBottom: 16,
-    borderWidth: 1,
-    borderColor: "#e5e7eb",
+    marginBottom: 12,
+    overflow: "hidden",
     shadowColor: "#000",
     shadowOpacity: 0.05,
-    shadowRadius: 3,
+    shadowRadius: 8,
     elevation: 2,
+  },
+  subjectTopBar: {
+    height: 3,
+  },
+  subjectContent: {
+    padding: 14,
   },
   subjectHeader: {
     flexDirection: "row",
-    justifyContent: "space-between",
     alignItems: "center",
     marginBottom: 12,
+  },
+  subjectIconCircle: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: "#eff6ff",
+    justifyContent: "center",
+    alignItems: "center",
+    marginRight: 12,
   },
   subjectInfo: {
     flex: 1,
   },
   subjectName: {
-    fontSize: 16,
+    fontSize: 15,
     fontWeight: "600",
     color: "#111827",
     marginBottom: 2,
   },
   subjectCode: {
-    fontSize: 13,
+    fontSize: 12,
     color: "#6b7280",
     fontWeight: "500",
   },
-  addClassButton: {
-    flexDirection: "row",
-    alignItems: "center",
-    backgroundColor: "#EFF6FF",
-    paddingHorizontal: 12,
-    paddingVertical: 8,
+  deleteIconButton: {
+    padding: 8,
+    backgroundColor: "#fee2e2",
     borderRadius: 8,
-    gap: 4,
-  },
-  addClassButtonText: {
-    color: "#2563EB",
-    fontSize: 13,
-    fontWeight: "600",
   },
   attendanceStats: {
     padding: 12,
@@ -846,48 +893,62 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   statsNumber: {
-    fontSize: 20,
+    fontSize: 18,
     fontWeight: "700",
     color: "#111827",
     marginBottom: 2,
   },
   statsText: {
-    fontSize: 12,
+    fontSize: 11,
     color: "#6b7280",
   },
   percentageContainer: {
     alignItems: "flex-end",
   },
   percentageText: {
-    fontSize: 28,
+    fontSize: 24,
     fontWeight: "700",
   },
   progressBarContainer: {
-    height: 8,
+    height: 6,
     backgroundColor: "#e5e7eb",
-    borderRadius: 4,
+    borderRadius: 3,
     overflow: "hidden",
     marginBottom: 8,
   },
   progressBar: {
     height: "100%",
-    borderRadius: 4,
+    borderRadius: 3,
   },
   warningContainer: {
     flexDirection: "row",
-    alignItems: "flex-start",
-    backgroundColor: "#FEE2E2",
-    padding: 10,
+    alignItems: "center",
+    backgroundColor: "#fff",
+    padding: 8,
     borderRadius: 6,
-    gap: 8,
+    gap: 6,
     marginTop: 4,
   },
   warningText: {
     flex: 1,
-    fontSize: 12,
+    fontSize: 11,
     color: "#ef4444",
     fontWeight: "500",
-    lineHeight: 16,
+  },
+  addClassButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "#3b82f6",
+    padding: 10,
+    borderRadius: 8,
+    gap: 6,
+    marginBottom: 12,
+  },
+  addClassButtonText: {
+    color: "#fff",
+    fontSize: 13,
+    fontWeight: "600",
   },
   recentClasses: {
     borderTopWidth: 1,
@@ -895,7 +956,7 @@ const styles = StyleSheet.create({
     paddingTop: 12,
   },
   recentClassesTitle: {
-    fontSize: 14,
+    fontSize: 13,
     fontWeight: "600",
     color: "#111827",
     marginBottom: 8,
@@ -904,7 +965,7 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    paddingVertical: 8,
+    paddingVertical: 6,
   },
   classRecordLeft: {
     flexDirection: "row",
@@ -912,16 +973,16 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   classDate: {
-    fontSize: 13,
+    fontSize: 12,
     color: "#6b7280",
   },
   statusBadge: {
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: 12,
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 10,
   },
   statusText: {
-    fontSize: 12,
+    fontSize: 11,
     fontWeight: "600",
   },
   modalOverlay: {
@@ -933,7 +994,7 @@ const styles = StyleSheet.create({
     backgroundColor: "#fff",
     borderTopLeftRadius: 20,
     borderTopRightRadius: 20,
-    maxHeight: "70%",
+    maxHeight: "75%",
   },
   modalHeader: {
     flexDirection: "row",
@@ -947,10 +1008,20 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontWeight: "600",
     color: "#111827",
-    flex: 1,
   },
   modalBody: {
     padding: 16,
+  },
+  subjectBadge: {
+    fontSize: 14,
+    fontWeight: "600",
+    color: "#3b82f6",
+    backgroundColor: "#eff6ff",
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 8,
+    marginBottom: 16,
+    textAlign: "center",
   },
   inputGroup: {
     marginBottom: 16,
@@ -986,9 +1057,13 @@ const styles = StyleSheet.create({
     backgroundColor: "#f9fafb",
     gap: 8,
   },
-  attendanceOptionActive: {
-    backgroundColor: "#fff",
-    borderColor: "#2563EB",
+  attendanceOptionActivePresent: {
+    backgroundColor: "#ecfdf5",
+    borderColor: "#10B981",
+  },
+  attendanceOptionActiveAbsent: {
+    backgroundColor: "#fef2f2",
+    borderColor: "#ef4444",
   },
   attendanceOptionText: {
     fontSize: 14,
@@ -1006,7 +1081,7 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
-    backgroundColor: "#2563EB",
+    backgroundColor: "#3b82f6",
     padding: 14,
     borderRadius: 8,
     gap: 8,

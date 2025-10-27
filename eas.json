@@ -9,22 +9,21 @@
       "distribution": "internal",
       "android": {
         "buildType": "apk"
-      },
-      "requireCommit": true
+      }
+      
     },
     "preview": {
       "distribution": "internal",
       "android": {
         "buildType": "apk"
-      },
-      "requireCommit": true
+      }
+    
     },
     "production": {
       "autoIncrement": true,
       "android": {
         "buildType": "app-bundle"
-      },
-      "requireCommit": true
+      }
     }
   },
   "submit": {

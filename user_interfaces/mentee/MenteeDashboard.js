@@ -1,3 +1,4 @@
+// screens/MenteeDashboard.js - BLUE THEME
 import React, { useEffect, useState } from "react";
 import {
   View,
@@ -48,7 +49,6 @@ export default function MenteeDashboard({ navigation }) {
     try {
       setLoading(true);
 
-      // Fetch mentee info from users collection
       const userDocRef = doc(db, "users", userId);
       const userSnap = await getDoc(userDocRef);
 
@@ -59,7 +59,6 @@ export default function MenteeDashboard({ navigation }) {
 
       const basicUserData = userSnap.data();
 
-      // Fetch mentee-specific data from mentees collection
       const menteeDocRef = doc(db, "mentees", userId);
       const menteeSnap = await getDoc(menteeDocRef);
 
@@ -79,7 +78,6 @@ export default function MenteeDashboard({ navigation }) {
         sgpaHistory: menteeData.sgpaHistory || [],
       });
 
-      // Fetch mentor assignment
       const assignmentsRef = collection(db, "assignments");
       const q = query(assignmentsRef, where("menteeId", "==", userId));
       const assignmentSnap = await getDocs(q);
@@ -132,7 +130,7 @@ export default function MenteeDashboard({ navigation }) {
     return (
       <SafeAreaView style={styles.container}>
         <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color="#2563EB" />
+          <ActivityIndicator size="large" color="#3b82f6" />
           <Text style={styles.loadingText}>Loading dashboard...</Text>
         </View>
       </SafeAreaView>
@@ -180,7 +178,7 @@ export default function MenteeDashboard({ navigation }) {
         {/* Stats */}
         <View style={styles.statsRow}>
           <View style={styles.statCard}>
-            <Ionicons name="document-text-outline" size={20} color="#2563EB" />
+            <Ionicons name="document-text-outline" size={20} color="#3b82f6" />
             <Text style={styles.statValue}>0</Text>
             <Text style={styles.statLabel}>Forms Submitted</Text>
           </View>
@@ -188,7 +186,7 @@ export default function MenteeDashboard({ navigation }) {
             <Ionicons
               name="chatbubble-ellipses-outline"
               size={20}
-              color="#2563EB"
+              color="#3b82f6"
             />
             <Text style={styles.statValue}>0</Text>
             <Text style={styles.statLabel}>Active Doubts</Text>
@@ -249,7 +247,7 @@ export default function MenteeDashboard({ navigation }) {
               <Ionicons
                 name="document-text-outline"
                 size={24}
-                color="#2563EB"
+                color="#3b82f6"
               />
               <Text style={styles.actionText}>Submit Form</Text>
             </TouchableOpacity>
@@ -258,7 +256,7 @@ export default function MenteeDashboard({ navigation }) {
               style={styles.actionBtn}
               onPress={() => navigation.navigate("Insights")}
             >
-              <Ionicons name="bar-chart-outline" size={24} color="#2563EB" />
+              <Ionicons name="bar-chart-outline" size={24} color="#3b82f6" />
               <Text style={styles.actionText}>View Progress</Text>
             </TouchableOpacity>
 
@@ -266,15 +264,15 @@ export default function MenteeDashboard({ navigation }) {
               style={styles.actionBtn}
               onPress={() => navigation.navigate("Attendance")}
             >
-              <Ionicons name="clipboard-outline" size={24} color="#2563EB" />
-              <Text style={styles.actionText}>track your Attendance</Text>
+              <Ionicons name="clipboard-outline" size={24} color="#3b82f6" />
+              <Text style={styles.actionText}>Track Attendance</Text>
             </TouchableOpacity>
 
             <TouchableOpacity
               style={styles.actionBtn}
               onPress={() => navigation.navigate("MenteeProfile")}
             >
-              <Ionicons name="person-outline" size={24} color="#2563EB" />
+              <Ionicons name="person-outline" size={24} color="#3b82f6" />
               <Text style={styles.actionText}>My Profile</Text>
             </TouchableOpacity>
           </View>
@@ -287,7 +285,7 @@ export default function MenteeDashboard({ navigation }) {
           style={styles.navItem}
           onPress={() => navigation.navigate("MenteeDashboard")}
         >
-          <Feather name="home" size={24} color="#2563EB" />
+          <Feather name="home" size={24} color="#3b82f6" />
           <Text style={[styles.navLabel, styles.navLabelActive]}>Home</Text>
         </TouchableOpacity>
 
@@ -348,13 +346,14 @@ const styles = StyleSheet.create({
     fontWeight: "600",
   },
   logoutButton: {
-    backgroundColor: "#2563EB",
+    backgroundColor: "#fff",
     paddingVertical: 8,
     paddingHorizontal: 15,
     borderRadius: 8,
+   
   },
   logoutButtonText: {
-    color: "white",
+    color: "#ef4444",
     fontWeight: "600",
   },
   scrollContent: {
@@ -362,7 +361,7 @@ const styles = StyleSheet.create({
   },
   welcomeCard: {
     flexDirection: "row",
-    backgroundColor: "#60A5FA",
+    backgroundColor: "#93c5fd", // Light blue (changed from #6ee7b7)
     margin: 15,
     padding: 15,
     borderRadius: 10,
@@ -474,11 +473,12 @@ const styles = StyleSheet.create({
     marginTop: 2,
   },
   contactBtn: {
-    backgroundColor: "#2563EB",
+    flexDirection: "row",
+    backgroundColor: "#3b82f6", // Blue (changed from #10b981)
     paddingVertical: 6,
     paddingHorizontal: 10,
-    borderRadius: 5,
-    flexDirection: "row",
+    borderRadius: 10,
+    top: -15,
     alignItems: "center",
   },
   contactText: {
@@ -503,14 +503,14 @@ const styles = StyleSheet.create({
   },
   actionBtn: {
     width: "48%",
-    backgroundColor: "#f1f5f9",
+    backgroundColor: "#eff6ff", // Light blue bg (changed from #ecfdf5)
     borderRadius: 8,
     padding: 20,
     alignItems: "center",
     marginTop: 10,
   },
   actionText: {
-    color: "#1e3a8a",
+    color: "#1e40af", // Dark blue text (changed from #047857)
     fontWeight: "500",
     marginTop: 8,
     textAlign: "center",
@@ -523,7 +523,6 @@ const styles = StyleSheet.create({
     paddingVertical: 10,
     paddingHorizontal: 16,
     justifyContent: "space-around",
-    position: "absolute",
     bottom: 0,
     left: 0,
     right: 0,
@@ -539,7 +538,7 @@ const styles = StyleSheet.create({
     marginTop: 2,
   },
   navLabelActive: {
-    color: "#2563EB",
+    color: "#3b82f6", // Blue (changed from #10b981)
     fontWeight: "600",
   },
 });

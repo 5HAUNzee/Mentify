@@ -1,3 +1,4 @@
+// screens/MyMentees.js - CORRECTED FIREBASE INTEGRATION
 import React, { useEffect, useState } from "react";
 import {
   View,
@@ -7,6 +8,9 @@ import {
   TouchableOpacity,
   ActivityIndicator,
   Dimensions,
+  RefreshControl,
+  Alert,
+  Image,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Feather } from "@expo/vector-icons";
@@ -15,14 +19,18 @@ import {
   getDocs,
   query,
   where,
+  doc,
+  getDoc,
 } from "firebase/firestore";
 import { db } from "../../firebase.config";
-import { useAuth } from "@clerk/clerk-expo";
+import { useAuth, useClerk } from "@clerk/clerk-expo";
 import { LineChart } from "react-native-chart-kit";
 
 export default function MyMentees({ navigation }) {
-  const { signOut, userId } = useAuth();
+  const { userId } = useAuth();
+  const { signOut } = useClerk();
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
   const [mentees, setMentees] = useState([]);
   const [filteredMentees, setFilteredMentees] = useState([]);
   const [selectedYear, setSelectedYear] = useState("All");
@@ -54,89 +62,87 @@ export default function MyMentees({ navigation }) {
       for (const assignmentDoc of assignmentsSnap.docs) {
         const assignment = assignmentDoc.data();
         
-        // Fetch mentee user data
-        const menteeQuery = query(
-          collection(db, "users"),
-          where("__name__", "==", assignment.menteeId)
-        );
-        const menteeSnap = await getDocs(menteeQuery);
+        // Fetch mentee from users collection
+        const userDoc = await getDoc(doc(db, "users", assignment.menteeId));
         
-        if (!menteeSnap.empty) {
-          const menteeData = menteeSnap.docs[0].data();
+        if (userDoc.exists()) {
+          const userData = userDoc.data();
           
-          // Fetch academic progress (you can customize this based on your data structure)
-          const progressData = await fetchMenteeProgress(assignment.menteeId);
+          // Fetch from mentees collection for academic data
+          let menteeAcademicData = {};
+          try {
+            const menteeDoc = await getDoc(doc(db, "mentees", assignment.menteeId));
+            if (menteeDoc.exists()) {
+              menteeAcademicData = menteeDoc.data();
+            }
+          } catch (err) {
+            console.log("No mentees doc for:", assignment.menteeId);
+          }
+          
+          // Calculate CGPA from sgpaHistory
+          const sgpaHistory = menteeAcademicData.sgpaHistory || [];
+          const currentCGPA = calculateCGPAFromHistory(sgpaHistory);
           
           menteesData.push({
             id: assignment.menteeId,
             assignmentId: assignmentDoc.id,
-            name: `${menteeData.firstName} ${menteeData.lastName}`,
-            regNo: menteeData.regNo || "CS2024001",
-            cgpa: menteeData.cgpa || calculateCGPA(progressData),
-            currentSemester: menteeData.currentSemester || "Sem 3",
-            year: getYearFromSemester(menteeData.currentSemester),
-            lastInteraction: assignment.lastContact || "4 days ago",
-            performanceStatus: menteeData.performanceStatus || "up",
-            progressData: progressData,
-            email: menteeData.email,
-            phone: menteeData.phone,
+            name: `${userData.firstName} ${userData.lastName}`,
+            email: userData.email,
+            profilePic: userData.profilePic,
+            regNo: menteeAcademicData.rollNumber || userData.rollNumber || "N/A",
+            cgpa: currentCGPA,
+            currentSemester: `Sem ${menteeAcademicData.currentSem || 1}`,
+            year: getYearFromSemester(menteeAcademicData.currentSem || 1),
+            lastInteraction: assignment.lastContact || "N/A",
+            performanceStatus: determinePerformance(sgpaHistory),
+            progressData: formatProgressData(sgpaHistory),
+            phone: userData.phone,
           });
         }
       }
 
       setMentees(menteesData);
       setFilteredMentees(menteesData);
+      setLoading(false);
+      setRefreshing(false);
     } catch (err) {
       console.error("Error fetching mentees:", err);
-    } finally {
+      Alert.alert("Error", "Failed to load mentees");
       setLoading(false);
+      setRefreshing(false);
     }
   };
 
-  const fetchMenteeProgress = async (menteeId) => {
-    try {
-      // Fetch form submissions to get academic progress
-      const formsQuery = query(
-        collection(db, "formSubmissions"),
-        where("menteeId", "==", menteeId),
-        where("status", "==", "submitted")
-      );
-      const formsSnap = await getDocs(formsQuery);
-      
-      const progress = [];
-      formsSnap.docs.forEach(doc => {
-        const data = doc.data();
-        if (data.responses && data.responses.cgpa) {
-          progress.push({
-            semester: data.semester,
-            cgpa: parseFloat(data.responses.cgpa) || 0,
-          });
-        }
-      });
-
-      // Sort by semester
-      progress.sort((a, b) => {
-        const semA = parseInt(a.semester.replace("Sem ", ""));
-        const semB = parseInt(b.semester.replace("Sem ", ""));
-        return semA - semB;
-      });
-
-      return progress;
-    } catch (err) {
-      console.error("Error fetching progress:", err);
-      return [];
-    }
+  const calculateCGPAFromHistory = (sgpaHistory) => {
+    if (!sgpaHistory || sgpaHistory.length === 0) return "N/A";
+    
+    // Calculate average of all SGPAs
+    const total = sgpaHistory.reduce((sum, item) => sum + (item.sgpa || 0), 0);
+    const average = total / sgpaHistory.length;
+    return average.toFixed(2);
   };
 
-  const calculateCGPA = (progressData) => {
-    if (progressData.length === 0) return "3.8";
-    const latest = progressData[progressData.length - 1];
-    return latest.cgpa.toFixed(1);
+  const formatProgressData = (sgpaHistory) => {
+    if (!sgpaHistory || sgpaHistory.length === 0) return [];
+    
+    return sgpaHistory.map((item, index) => ({
+      semester: `Sem ${item.sem || index + 1}`,
+      cgpa: item.sgpa || 0,
+    }));
   };
 
-  const getYearFromSemester = (semester) => {
-    if (!semester) return "FE";
-    const semNum = parseInt(semester.replace("Sem ", ""));
+  const determinePerformance = (sgpaHistory) => {
+    if (!sgpaHistory || sgpaHistory.length < 2) return "stable";
+    
+    const latest = sgpaHistory[sgpaHistory.length - 1]?.sgpa || 0;
+    const previous = sgpaHistory[sgpaHistory.length - 2]?.sgpa || 0;
+    
+    if (latest > previous) return "up";
+    if (latest < previous) return "down";
+    return "stable";
+  };
+
+  const getYearFromSemester = (semNum) => {
     if (semNum <= 2) return "FE";
     if (semNum <= 4) return "SE";
     if (semNum <= 6) return "TE";
@@ -151,13 +157,31 @@ export default function MyMentees({ navigation }) {
     }
   };
 
+  const onRefresh = () => {
+    setRefreshing(true);
+    fetchMentees();
+  };
+
   const handleSignOut = async () => {
-    try {
-      await signOut();
-      navigation.replace("Auth");
-    } catch (err) {
-      console.error("Sign out error:", err);
-    }
+    Alert.alert(
+      "Logout",
+      "Are you sure you want to log out?",
+      [
+        { text: "Cancel", style: "cancel" },
+        {
+          text: "Logout",
+          style: "destructive",
+          onPress: async () => {
+            try {
+              await signOut();
+              navigation.replace("Auth");
+            } catch (err) {
+              console.error("Sign out error:", err);
+            }
+          },
+        },
+      ]
+    );
   };
 
   const getStatusColor = (status) => {
@@ -177,13 +201,13 @@ export default function MyMentees({ navigation }) {
     if (!progressData || progressData.length === 0) {
       return (
         <View style={styles.noProgressContainer}>
-          <Text style={styles.noProgressText}>No progress data yet</Text>
+          <Text style={styles.noProgressText}>No progress data available</Text>
         </View>
       );
     }
 
     const chartData = {
-      labels: progressData.map(p => p.semester.replace("Semester ", "S")),
+      labels: progressData.map(p => `S${p.semester.replace("Sem ", "")}`),
       datasets: [
         {
           data: progressData.map(p => p.cgpa),
@@ -195,7 +219,7 @@ export default function MyMentees({ navigation }) {
 
     return (
       <View style={styles.chartContainer}>
-        <Text style={styles.chartTitle}>Academic Progress</Text>
+        <Text style={styles.chartTitle}>Academic Progress (SGPA)</Text>
         <LineChart
           data={chartData}
           width={Dimensions.get("window").width - 80}
@@ -220,7 +244,7 @@ export default function MyMentees({ navigation }) {
           style={styles.chart}
         />
         <View style={styles.cgpaIndicator}>
-          <Text style={styles.cgpaLabel}>Current CGPA</Text>
+          <Text style={styles.cgpaLabel}>Average CGPA</Text>
           <Text style={styles.cgpaValue}>{cgpa}</Text>
         </View>
       </View>
@@ -232,6 +256,7 @@ export default function MyMentees({ navigation }) {
       <SafeAreaView style={styles.container}>
         <View style={styles.loadingContainer}>
           <ActivityIndicator size="large" color="#f59e0b" />
+          <Text style={styles.loadingText}>Loading mentees...</Text>
         </View>
       </SafeAreaView>
     );
@@ -281,6 +306,9 @@ export default function MyMentees({ navigation }) {
         style={styles.content}
         showsVerticalScrollIndicator={false}
         contentContainerStyle={styles.contentContainer}
+        refreshControl={
+          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={['#f59e0b']} />
+        }
       >
         {/* Page Title */}
         <Text style={styles.pageTitle}>Mentee Progress Overview</Text>
@@ -302,7 +330,13 @@ export default function MyMentees({ navigation }) {
                 {/* Mentee Header */}
                 <View style={styles.menteeHeader}>
                   <View style={styles.menteeAvatar}>
-                    <Feather name="user" size={24} color="#6b7280" />
+                    {mentee.profilePic ? (
+                      <Image source={{ uri: mentee.profilePic }} style={styles.menteeAvatarImage} />
+                    ) : (
+                      <Text style={styles.menteeAvatarText}>
+                        {mentee.name.split(' ').map(n => n[0]).join('')}
+                      </Text>
+                    )}
                   </View>
                   <View style={styles.menteeBasicInfo}>
                     <Text style={styles.menteeName}>{mentee.name}</Text>
@@ -313,7 +347,7 @@ export default function MyMentees({ navigation }) {
                   </View>
                   <View style={styles.menteeStats}>
                     <Text style={styles.cgpaLarge}>{mentee.cgpa}</Text>
-                    <Text style={styles.cgpaLabel}>Current CGPA</Text>
+                    <Text style={styles.cgpaLabel}>CGPA</Text>
                     <View
                       style={[
                         styles.performanceBadge,
@@ -340,40 +374,14 @@ export default function MyMentees({ navigation }) {
                 {/* Progress Chart */}
                 {renderProgressChart(mentee.progressData, mentee.cgpa)}
 
-                {/* Action Buttons */}
-                <View style={styles.actionButtons}>
-                  <TouchableOpacity
-                    style={styles.viewDetailsBtn}
-                    onPress={() =>
-                      navigation.navigate("MenteeDetails", {
-                        menteeId: mentee.id,
-                      })
-                    }
-                  >
-                    <Feather name="eye" size={16} color="#f59e0b" />
-                    <Text style={styles.viewDetailsBtnText}>View Details</Text>
-                  </TouchableOpacity>
-
-                  <TouchableOpacity
-                    style={styles.messageBtn}
-                    onPress={() =>
-                      navigation.navigate("SendMessage", {
-                        menteeId: mentee.id,
-                        menteeName: mentee.name,
-                      })
-                    }
-                  >
-                    <Feather name="message-circle" size={16} color="#fff" />
-                    <Text style={styles.messageBtnText}>Message</Text>
-                  </TouchableOpacity>
-                </View>
+                
               </View>
             );
           })
         )}
       </ScrollView>
 
-      {/* Bottom Navigation */}
+      {/* Bottom Navigation - NOT TOUCHED */}
       <View style={styles.bottomNav}>
         <TouchableOpacity
           style={styles.navItem}
@@ -390,10 +398,10 @@ export default function MyMentees({ navigation }) {
 
         <TouchableOpacity
           style={styles.navItem}
-          onPress={() => navigation.navigate("Messages")}
+          onPress={() => navigation.navigate("MentorForms")}
         >
-          <Feather name="message-circle" size={24} color="#9ca3af" />
-          <Text style={styles.navLabel}>Messages</Text>
+          <Feather name="file-text" size={24} color="#9ca3af" />
+          <Text style={styles.navLabel}>Forms</Text>
         </TouchableOpacity>
 
         <TouchableOpacity
@@ -481,6 +489,11 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     alignItems: "center",
   },
+  loadingText: {
+    marginTop: 12,
+    fontSize: 14,
+    color: "#6b7280",
+  },
   pageTitle: {
     fontSize: 20,
     fontWeight: "700",
@@ -517,10 +530,21 @@ const styles = StyleSheet.create({
     width: 48,
     height: 48,
     borderRadius: 24,
-    backgroundColor: "#f3f4f6",
+    backgroundColor: "#dbeafe",
     justifyContent: "center",
     alignItems: "center",
     marginRight: 12,
+    overflow: "hidden",
+  },
+  menteeAvatarImage: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+  },
+  menteeAvatarText: {
+    fontSize: 16,
+    fontWeight: "600",
+    color: "#2563eb",
   },
   menteeBasicInfo: {
     flex: 1,
@@ -564,7 +588,6 @@ const styles = StyleSheet.create({
   performanceText: {
     fontSize: 11,
     fontWeight: "600",
-    textTransform: "lowercase",
   },
   chartContainer: {
     marginBottom: 16,
@@ -593,6 +616,9 @@ const styles = StyleSheet.create({
   noProgressContainer: {
     padding: 20,
     alignItems: "center",
+    backgroundColor: "#f9fafb",
+    borderRadius: 8,
+    marginBottom: 16,
   },
   noProgressText: {
     fontSize: 13,
@@ -640,7 +666,6 @@ const styles = StyleSheet.create({
     borderTopColor: "#e5e7eb",
     paddingVertical: 8,
     paddingHorizontal: 16,
-    position: "absolute",
     bottom: 0,
     left: 0,
     right: 0,

@@ -544,7 +544,7 @@ const styles = StyleSheet.create({
     justifyContent: "space-around",
     paddingVertical: 12,
     backgroundColor: "#fff",
-    elevation: 4,
+    
   },
   navItem: { alignItems: "center" },
   navLabel: { color: "#9ca3af", fontSize: 12 },

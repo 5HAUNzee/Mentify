@@ -145,10 +145,7 @@ export default function On1({ navigation }) {
             onPress={handleNavigateToAuth}
             className="py-4 rounded-2xl items-center"
           >
-            <Text className="text-white text-base font-medium">
-              Already have an account?{" "}
-              <Text className="font-semibold underline">Log In</Text>
-            </Text>
+          
           </TouchableOpacity>
         )}
       </View>
