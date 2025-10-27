@@ -3,7 +3,6 @@
     "name": "Mentify",
     "slug": "Mentify",
     "version": "1.0.0",
-    
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
@@ -21,10 +20,19 @@
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#ffffff"
       },
-      "edgeToEdgeEnabled": true
+      "edgeToEdgeEnabled": true,
+      "package": "com.rishiketpagi10.Mentify"
     },
     "web": {
       "favicon": "./assets/favicon.png"
-    }
+    },
+    "extra": {
+      "eas": {
+        "projectId": "02a9fa1f-34c2-4136-842f-37df50b1be1f"
+      }
+    },
+    "plugins": [
+      "expo-font"
+    ]
   }
 }
