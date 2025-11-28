@@ -75,9 +75,13 @@ Node.js
 
 Express.js
 
-Database & Cloud Services
+Authentication
 
-Firebase Authentication
+Clerk (Modern, secure authentication & user management)
+
+Firebase Authentication (Optional fallback or legacy integration)
+
+Database & Cloud Services
 
 Firebase Firestore / Realtime Database
 
