@@ -6,7 +6,6 @@ import { NavigationContainer } from "@react-navigation/native";
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
 import { tokenCache } from "@clerk/clerk-expo/token-cache";
 import { ClerkProvider } from "@clerk/clerk-expo";
-
 // Your screens
 import Welcome from "./user_interfaces/onboarding/Welcome";
 import On1 from "./user_interfaces/onboarding/On1";
@@ -14,7 +13,6 @@ import Auth from "./user_interfaces/Auth/Auth";
 import ApprovalPendingScreen from "./user_interfaces/Auth/ApprovalPendingScreen";
 import Registration from "./user_interfaces/Auth/Registration";
 import Rejected from "./user_interfaces/Auth/Rejected";
-
 // College Admin
 import CollegeDashboard from "./user_interfaces/college_admin/CollegeDashboard";
 import Users from "./user_interfaces/college_admin/Users";
@@ -22,13 +20,11 @@ import Forms from "./user_interfaces/college_admin/Forms";
 import CollegeProfile from "./user_interfaces/college_admin/CollegeProfile";
 import CreateForm from "./user_interfaces/college_admin/CreateForm";
 import ViewForm from "./user_interfaces/college_admin/ViewForm";
-
 // Dept Admin
 import DeptDashboard from "./user_interfaces/dept_admin/DeptDashboard";
 import Mentors from "./user_interfaces/dept_admin/Mentors";
 import Announcements from "./user_interfaces/dept_admin/Announcements";
 import Profile from "./user_interfaces/dept_admin/Profile";
-
 // Mentor
 import MentorDashboard from "./user_interfaces/mentor/MentorDashboard";
 import MentorProfile from "./user_interfaces/mentor/MentorProfile";
@@ -37,7 +33,6 @@ import MentorQueries from "./user_interfaces/mentor/MentorQueries";
 import MentorProgress from "./user_interfaces/mentor/MentorProgress";
 import MentorAnnouncements from "./user_interfaces/mentor/MentorAnnouncements";
 import MentorForms from "./user_interfaces/mentor/MentorForms";
-
 // Mentee
 import MenteeDashboard from "./user_interfaces/mentee/MenteeDashboard";
 import MenteeProfile from "./user_interfaces/mentee/MenteeProfile";
@@ -46,7 +41,6 @@ import AttendanceTracker from "./user_interfaces/mentee/Attendance";
 import MenteeForms from "./user_interfaces/mentee/MenteeForms";
 import MenteeFormScreen from "./user_interfaces/mentee/MenteeFormScreen";
 import Insights from "./user_interfaces/mentee/Insights";
-
 // Super Admin
 import SuperAdminDashboard from "./user_interfaces/super_admin/SuperAdminDashboard";
 import AdminAnalytics from "./user_interfaces/super_admin/AdminAnalytics";

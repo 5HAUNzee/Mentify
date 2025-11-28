@@ -18,6 +18,8 @@ import { Feather } from '@expo/vector-icons';
 import { collection, query, where, getDocs, doc, updateDoc } from 'firebase/firestore';
 import { db } from '../../firebase.config';
 import { useAuth, useClerk } from '@clerk/clerk-expo';
+import * as Print from 'expo-print';
+import * as Sharing from 'expo-sharing';
 
 export default function MentorForms({ navigation }) {
   const { userId } = useAuth();
@@ -30,7 +32,7 @@ export default function MentorForms({ navigation }) {
   const [modalVisible, setModalVisible] = useState(false);
   const [comments, setComments] = useState('');
   const [processing, setProcessing] = useState(false);
-
+  
   useEffect(() => {
     loadSubmissions();
   }, []);
@@ -38,7 +40,7 @@ export default function MentorForms({ navigation }) {
   const loadSubmissions = async () => {
     try {
       setLoading(true);
-      
+
       const submissionsQuery = query(
         collection(db, 'submissions'),
         where('mentorId', '==', userId)
@@ -109,7 +111,7 @@ export default function MentorForms({ navigation }) {
       ]
     );
   };
-
+  
   const handleSendBack = async () => {
     if (!selectedSubmission) return;
 
@@ -313,8 +315,8 @@ export default function MentorForms({ navigation }) {
             <Text style={styles.emptyTitle}>No Submissions</Text>
             <Text style={styles.emptyText}>
               {selectedTab === 'pending' ? 'No pending forms to review' :
-               selectedTab === 'approved' ? 'No approved forms yet' :
-               'No forms sent back for revision'}
+                selectedTab === 'approved' ? 'No approved forms yet' :
+                  'No forms sent back for revision'}
             </Text>
           </View>
         ) : (
